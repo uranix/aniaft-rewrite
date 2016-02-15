@@ -478,58 +478,32 @@ int makeTria(void) {
     return err;
 } /*makeTria*/
 
-
-typedef struct {
-    int p;
-    int n;
-} plist;
-
-static int add_glist(int a, int b, int *png, plist *glist, int *s) {
-    int c = s[a];
-    while (c>=0) {
-        if (glist[c].p == b) return 0;
-        c = glist[c].n;
-    }
-    glist[*png].p = b;
-    glist[*png].n = s[a];
-    s[a] = *png;
-    (*png)++;
-    return 1;
-}
-
 static int fill_eadj(void) {
-    int *s;
-    int ng;
-    plist *glist;
-    int i, j, n, l;
+    int i, j, n;
     int a, b, c;
 
-    glist = (plist*)malloc(sizeof(plist)*6*mesh2.nTria);
-    ng = 0;
-    s = (int*)malloc(sizeof(int)*mesh2.nPoint);
-    for (j=0; j<mesh2.nPoint; j++)  s[j] = -1;
+    std::vector<std::set<int> > glist(mesh2.nPoint);
 
     for (i=0; i<mesh2.nTria; i++) {
-        a = mesh2.v1[i],  b = mesh2.v2[i],  c = mesh2.v3[i];
-        add_glist(a, b, &ng, glist, s);
-        add_glist(a, c, &ng, glist, s);
-        add_glist(b, c, &ng, glist, s);
-        add_glist(b, a, &ng, glist, s);
-        add_glist(c, a, &ng, glist, s);
-        add_glist(c, b, &ng, glist, s);
+        a = mesh2.v1[i];
+        b = mesh2.v2[i];
+        c = mesh2.v3[i];
+
+        glist[a].insert(b);
+        glist[a].insert(c);
+        glist[b].insert(c);
+        glist[b].insert(a);
+        glist[c].insert(a);
+        glist[c].insert(b);
     }
     n = 0;
     for (j=0; j<mesh2.nPoint; j++) {
         eadj.ia[j] = n;
-        l = s[j];
-        while (l>=0) {
-            eadj.ja[n++] = glist[l].p;
-            l = glist[l].n;
-        }
+        for (const int &p : glist[j])
+            eadj.ja[n++] = p;
     }
     eadj.ia[mesh2.nPoint] = n;
 
-    free(s),  free(glist);
     return n;
 }
 
