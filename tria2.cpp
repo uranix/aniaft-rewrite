@@ -1,11 +1,15 @@
-#include<math.h>
-#include<stdlib.h>
+#include <cmath>
+#include <cstdlib>
 
 #include"region2.h"
 #include"refine2.h"
 #include"tree2.h"
 #include"tria2.h"
 #include"user2.h"
+
+#include <set>
+#include <map>
+#include <vector>
 
 #define SHOWPROGRESS 1
 
@@ -24,7 +28,31 @@ static PStrucFace2 intedge;
 static int ntodelete;
 static PStrucFace2 todelete[3];
 
-typedef int edge[2];
+struct edge {
+    int v1, v2;
+    int &operator[](const int i) {
+        if (i == 0)
+            return v1;
+        if (i == 1)
+            return v2;
+        throw;
+    }
+    const int &operator[](const int i) const {
+        if (i == 0)
+            return v1;
+        if (i == 1)
+            return v2;
+        throw;
+    }
+    bool operator< (const edge &o) const {
+        if (v1 < o.v1)
+            return true;
+        if (v1 > o.v2)
+            return false;
+        return v2 < o.v2;
+    }
+};
+
 typedef double vertex[3];
 typedef struct {
     int *ia;
@@ -41,7 +69,7 @@ static neigh_trias tadj = {NULL, NULL};
 
 
 static double dist(int  a, int b) {
-    return sqrt(
+    return std::sqrt(
             (mesh2.x[a]-mesh2.x[b])*(mesh2.x[a]-mesh2.x[b]) +
             (mesh2.y[a]-mesh2.y[b])*(mesh2.y[a]-mesh2.y[b])
         );
@@ -58,7 +86,7 @@ static double func_q(int k1, int k2, int k) {
         - 2.0*mesh2.x[k]*mesh2.x[k1] - 2.0*mesh2.x[k]*mesh2.x[k2] - 2.0*mesh2.x[k1]*mesh2.x[k2] +
         2.0*mesh2.y[k]*mesh2.y[k] + 2.0*mesh2.y[k1]*mesh2.y[k1] + 2.0*mesh2.y[k2]*mesh2.y[k2]
         - 2.0*mesh2.y[k]*mesh2.y[k1] - 2.0*mesh2.y[k]*mesh2.y[k2] - 2.0*mesh2.y[k1]*mesh2.y[k2];
-    return  4.0*sqrt(3.0)*S/L;
+    return  4.0*std::sqrt(3.0)*S/L;
 }
 static int func_xy(int k, int k1, int k2, double dx[2], double delta, int n) {
     const double S = (
@@ -66,7 +94,7 @@ static int func_xy(int k, int k1, int k2, double dx[2], double delta, int n) {
             mesh2.x[k]*(mesh2.y[k2]-mesh2.y[k1]) +
             mesh2.y[k]*(mesh2.x[k1]-mesh2.x[k2])
         )/2.0;
-    const double H = S + sqrt(S*S + 4.0*delta*delta);
+    const double H = S + std::sqrt(S*S + 4.0*delta*delta);
     //    H = 2.0*S;
     const double L = 2.0*mesh2.x[k]*mesh2.x[k] + 2.0*mesh2.x[k1]*mesh2.x[k1] + 2.0*mesh2.x[k2]*mesh2.x[k2]
         - 2.0*mesh2.x[k]*mesh2.x[k1] - 2.0*mesh2.x[k]*mesh2.x[k2] - 2.0*mesh2.x[k1]*mesh2.x[k2] +
@@ -76,12 +104,12 @@ static int func_xy(int k, int k1, int k2, double dx[2], double delta, int n) {
     const double Lx = 4.0*mesh2.x[k] - 2.0*(mesh2.x[k1]+mesh2.x[k2]);
     const double Ly = 4.0*mesh2.y[k] - 2.0*(mesh2.y[k1]+mesh2.y[k2]);
 
-    const double Hx = (mesh2.y[k2]-mesh2.y[k1])/2.0 + (S*(mesh2.y[k2]-mesh2.y[k1]))/2.0/sqrt(S*S + 4.0*delta*delta);
-    const double Hy = (mesh2.x[k1]-mesh2.x[k2])/2.0 + (S*(mesh2.x[k1]-mesh2.x[k2]))/2.0/sqrt(S*S + 4.0*delta*delta);
+    const double Hx = (mesh2.y[k2]-mesh2.y[k1])/2.0 + (S*(mesh2.y[k2]-mesh2.y[k1]))/2.0/std::sqrt(S*S + 4.0*delta*delta);
+    const double Hy = (mesh2.x[k1]-mesh2.x[k2])/2.0 + (S*(mesh2.x[k1]-mesh2.x[k2]))/2.0/std::sqrt(S*S + 4.0*delta*delta);
 
-    const double f = pow(2.0*L/H/4.0/sqrt(3.0), n - 1);
-    dx[0] = (2.0*Lx*H - 2.0*Hx*L)/H/H/4.0/sqrt(3.0);
-    dx[1] = (2.0*Ly*H - 2.0*Hy*L)/H/H/4.0/sqrt(3.0);
+    const double f = std::pow(2.0*L/H/4.0/std::sqrt(3.0), n - 1);
+    dx[0] = (2.0*Lx*H - 2.0*Hx*L)/H/H/4.0/std::sqrt(3.0);
+    dx[1] = (2.0*Ly*H - 2.0*Hy*L)/H/H/4.0/std::sqrt(3.0);
 
     dx[0] *= f;
     dx[1] *= f;
@@ -167,12 +195,12 @@ static double height(PStrucFace2 e) {
 
     c = ((x-x0)*(x1-x0) + (y-y0)*(y1-y0)) / ((x1-x0)*(x1-x0) + (y1-y0)*(y1-y0));
     if (c<=0.0)
-        return sqrt((x-x0)*(x-x0) + (y-y0)*(y-y0));
+        return std::sqrt((x-x0)*(x-x0) + (y-y0)*(y-y0));
     else if (c>=1.0)
-        return sqrt((x1-x)*(x1-x) + (y1-y)*(y1-y));
+        return std::sqrt((x1-x)*(x1-x) + (y1-y)*(y1-y));
 
     s = (x0-x)*(y1-y) - (y0-y)*(x1-x);
-    r = sqrt((x1-x0)*(x1-x0) + (y1-y0)*(y1-y0));
+    r = std::sqrt((x1-x0)*(x1-x0) + (y1-y0)*(y1-y0));
 
     return fabs(s)/r;
 }
@@ -201,7 +229,7 @@ static int new_point(PStrucFace2 e) {
 
     b = x1 - x2;
     a = y2 - y1;
-    p = sqrt(a * a + b * b);
+    p = std::sqrt(a * a + b * b);
 
     if (p == 0.0)
         return -1;
@@ -214,15 +242,15 @@ static int new_point(PStrucFace2 e) {
         y = 0.5 * (y1 + y2) + b * 0.3 * p;
         p = sizeFace(x, y);
         if (p*p-r*r < p*p*3.0/4.0)
-            p = sqrt(r*r + p*p*3.0/4.0);
+            p = std::sqrt(r*r + p*p*3.0/4.0);
     } else {
-        p = COARSEFACTOR * sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
+        p = COARSEFACTOR * std::sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
     }
     if (p < 1.1*r)
         p = 1.1*r;
 
-    x = 0.5 * (x1 + x2) + a * sqrt(p*p-r*r);
-    y = 0.5 * (y1 + y2) + b * sqrt(p*p-r*r);
+    x = 0.5 * (x1 + x2) + a * std::sqrt(p*p-r*r);
+    y = 0.5 * (y1 + y2) + b * std::sqrt(p*p-r*r);
 
     addPoint(x, y);
     mesh2.nPoint--;
@@ -233,7 +261,7 @@ static int new_point(PStrucFace2 e) {
     radius = distance(x, y, x1, y1);
 
     r = radius * 1.0001220703125; // 8193. / 8192
-    rmin = (beta*r + minrho + sqrt((beta*r - minrho)*(beta*r - minrho) + alpha))/2.0;
+    rmin = (beta*r + minrho + std::sqrt((beta*r - minrho)*(beta*r - minrho) + alpha))/2.0;
     r = radius * 2.0;
 
     vicinityFaces(x, y, r);
@@ -505,77 +533,38 @@ static int fill_eadj(void) {
     return n;
 }
 
-// hlist
-// vertex -> list of edges
-
-typedef struct {
-    edge e;
-    int n;
-} elist;
-
-static int add_hlist(int a, edge b, int *pnh, elist *hlist, int *s) {
-    int c = s[a];
-
-    while (c>=0) {
-        if (hlist[c].e[0] == b[0] && hlist[c].e[1] == b[1])
-            return 0;
-        c = hlist[c].n;
-    }
-    hlist[*pnh].e[0] = b[0];
-    hlist[*pnh].e[1] = b[1];
-    hlist[*pnh].n = s[a];
-    s[a] = *pnh;
-    (*pnh)++;
-    return 1;
-}
-
 static int fill_tadj(void) {
-    int *s;
-    int nh;
-    elist *hlist;
-    int i, j, n, l;
+    std::vector<std::set<edge> > hlist(mesh2.nPoint);
+    int i, j, n;
     int a;
     edge b;
-
-    nh = 0;
-
-    hlist = (elist*)malloc(sizeof(elist)*3*mesh2.nTria);
-    s = (int*)malloc(sizeof(int)*mesh2.nPoint);
-
-    for (j=0; j<mesh2.nPoint; j++)
-        s[j] = -1;
 
     for (i=0; i<mesh2.nTria; i++) {
         a    = mesh2.v1[i];
         b[0] = mesh2.v2[i];
         b[1] = mesh2.v3[i];
-        add_hlist(a, b, &nh, hlist, s);
+
+        hlist[a].insert(b);
 
         a    = mesh2.v2[i];
         b[0] = mesh2.v3[i];
         b[1] = mesh2.v1[i];
-        add_hlist(a, b, &nh, hlist, s);
+        hlist[a].insert(b);
 
         a    = mesh2.v3[i];
         b[0] = mesh2.v1[i];
         b[1] = mesh2.v2[i];
-        add_hlist(a, b, &nh, hlist, s);
+        hlist[a].insert(b);
     }
     n = 0;
     for (j=0; j<mesh2.nPoint; j++) {
         tadj.ia[j] = n;
-        l = s[j];
-        while (l>=0) {
-            tadj.ja[n][0] = hlist[l].e[0];
-            tadj.ja[n][1] = hlist[l].e[1];
+        for (const edge &e : hlist[j]) {
+            tadj.ja[n] = e;
             n++;
-            l = hlist[l].n;
         }
     }
     tadj.ia[mesh2.nPoint] = n;
-
-    free(s);
-    free(hlist);
     return n;
 }
 
@@ -640,7 +629,7 @@ static int opt_func(int nfixed) {
                     x[0] -= z[0];
                     x[1] -= z[1];
                 }
-                r = sqrt(x[0]*x[0] + x[1]*x[1]);
+                r = std::sqrt(x[0]*x[0] + x[1]*x[1]);
                 if (r > 1.0/ds) {
                     r = 1.0/ds*(1.0 + log(r*ds))/r;
                     x[0] *= r;
@@ -648,7 +637,7 @@ static int opt_func(int nfixed) {
                 }
                 dx[j][0] = x[0];
                 dx[j][1] = x[1];
-                r = sqrt(x[0]*x[0] + x[1]*x[1]);
+                r = std::sqrt(x[0]*x[0] + x[1]*x[1]);
                 if (rs < r)
                     rs = r;
             }

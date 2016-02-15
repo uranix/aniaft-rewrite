@@ -1,5 +1,5 @@
 CXX=g++
-CXXFLAGS=-O3 -Wall
+CXXFLAGS=-std=c++11 -O3 -Wall
 
 SRC=aft2d.c memory2.c refine2.c region2.c struct2.c \
 	tria2.c user2.c user.c main.c mesh.c \
