@@ -321,7 +321,8 @@ static void vicinityFacesRec( PStrucNode2d  node )
     s = tree2.side;
     if (node->nodelist[0]) {
         center(&tree2.xc, &tree2.yc, tree2.side, 0);
-        if (sectQuad()) vicinityFacesRec( node->nodelist[0] );
+        if (sectQuad())
+            vicinityFacesRec( node->nodelist[0] );
     }
     for (i=1;i<4;i++) {
         if (!node->nodelist[i]) continue;
@@ -329,19 +330,22 @@ static void vicinityFacesRec( PStrucNode2d  node )
         tree2.xc = x;
         tree2.yc = y;
         center(&tree2.xc, &tree2.yc, tree2.side, i);
-        if (sectQuad()) vicinityFacesRec( node->nodelist[i] );
+        if (sectQuad())
+            vicinityFacesRec( node->nodelist[i] );
     }
-    return;
 } /* vicinityFacesRec */
 
 void vicinityFaces( double x, double y, double size )
 {
-    tree2.xc=0.5; tree2.yc=0.5; tree2.side=0.5;
+    tree2.xc=0.5;
+    tree2.yc=0.5;
+    tree2.side=0.5;
+
     tree2.nVicinityFace = 0;
     tree2.sVicinity = size;
-    tree2.xVicinity = x; tree2.yVicinity = y;
-    vicinityFacesRec( tree2.root );
+    tree2.xVicinity = x;
+    tree2.yVicinity = y;
 
-    return;
+    vicinityFacesRec( tree2.root );
 } /* vicinityFaces */
 

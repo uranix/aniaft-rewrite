@@ -6,8 +6,6 @@
 #include "struct2.h"
 
 #define MAX_POINT 50000
-#define EMPTY 0
-
 
 double sizeFace(double x,double y);
 void  makeAdvancedFront(int *boundVert, int *n_bound, int *cut, int *curve, double *par_t, char *outFileName);

@@ -4,9 +4,8 @@
 
 #include"struct2.h"
 
-
 /* exported  function  function */
-void Near *nearAlloc( unsigned int n );
+void *nearAlloc( unsigned int n );
 void initMemory( void );
 void freeMemory(void);
 

@@ -17,10 +17,7 @@ extern  StrucMesh2  mesh2;
 extern  StrucTree2  tree2;
 
 extern  int boolFAF;
-
-double COARSEFACTOR = 1.5;
-
-static int     new_vert;
+static int new_vert;
 
 static double minrho,alpha,beta;
 
@@ -54,58 +51,53 @@ struct edge {
 };
 
 typedef double vertex[3];
-typedef struct {
-    int *ia;
-    int *ja;
-} neigh_edges;
 
-typedef struct {
-    int *ia;
-    edge *ja;
-} neigh_trias;
-
-static neigh_edges eadj = {NULL, NULL};
-static neigh_trias tadj = {NULL, NULL};
-
+std::vector<std::set<int> > eadj;
+std::vector<std::set<edge> > tadj;
 
 static double dist(int  a, int b) {
-    return std::sqrt(
-            (mesh2.x[a]-mesh2.x[b])*(mesh2.x[a]-mesh2.x[b]) +
-            (mesh2.y[a]-mesh2.y[b])*(mesh2.y[a]-mesh2.y[b])
-        );
+    const Point &pa = mesh2.pts[a];
+    const Point &pb = mesh2.pts[b];
+    return std::sqrt((pa.x - pb.x)*(pa.x - pb.x) + (pa.y - pb.y)*(pa.y - pb.y));
 }
 
-static double func_q(int k1, int k2, int k) {
-    double L, S;
-    S = (
-            mesh2.x[k2]*mesh2.y[k1] - mesh2.x[k1]*mesh2.y[k2] +
-            mesh2.x[k]*(mesh2.y[k2]-mesh2.y[k1]) +
-            mesh2.y[k]*(mesh2.x[k1]-mesh2.x[k2])
+static double func_q(int a, int b, int c) {
+    const Point &pa = mesh2.pts[a];
+    const Point &pb = mesh2.pts[b];
+    const Point &pc = mesh2.pts[c];
+    const double S = (
+            pb.x*pa.y - pa.x*pb.y +
+            pc.x*(pb.y-pa.y) +
+            pc.y*(pa.x-pb.x)
         )/2.0;
-    L = 2.0*mesh2.x[k]*mesh2.x[k] + 2.0*mesh2.x[k1]*mesh2.x[k1] + 2.0*mesh2.x[k2]*mesh2.x[k2]
-        - 2.0*mesh2.x[k]*mesh2.x[k1] - 2.0*mesh2.x[k]*mesh2.x[k2] - 2.0*mesh2.x[k1]*mesh2.x[k2] +
-        2.0*mesh2.y[k]*mesh2.y[k] + 2.0*mesh2.y[k1]*mesh2.y[k1] + 2.0*mesh2.y[k2]*mesh2.y[k2]
-        - 2.0*mesh2.y[k]*mesh2.y[k1] - 2.0*mesh2.y[k]*mesh2.y[k2] - 2.0*mesh2.y[k1]*mesh2.y[k2];
+    const double L = 2.0*pc.x*pc.x + 2.0*pa.x*pa.x + 2.0*pb.x*pb.x
+        - 2.0*pc.x*pa.x - 2.0*pc.x*pb.x - 2.0*pa.x*pb.x +
+        2.0*pc.y*pc.y + 2.0*pa.y*pa.y + 2.0*pb.y*pb.y
+        - 2.0*pc.y*pa.y - 2.0*pc.y*pb.y - 2.0*pa.y*pb.y;
     return  4.0*std::sqrt(3.0)*S/L;
 }
-static int func_xy(int k, int k1, int k2, double dx[2], double delta, int n) {
+
+static int func_xy(int c, int a, int b, double dx[2], double delta, int n) {
+    const Point &pa = mesh2.pts[a];
+    const Point &pb = mesh2.pts[b];
+    const Point &pc = mesh2.pts[c];
     const double S = (
-            mesh2.x[k2]*mesh2.y[k1] - mesh2.x[k1]*mesh2.y[k2] +
-            mesh2.x[k]*(mesh2.y[k2]-mesh2.y[k1]) +
-            mesh2.y[k]*(mesh2.x[k1]-mesh2.x[k2])
+            pb.x*pa.y - pa.x*pb.y +
+            pc.x*(pb.y-pa.y) +
+            pc.y*(pa.x-pb.x)
         )/2.0;
     const double H = S + std::sqrt(S*S + 4.0*delta*delta);
     //    H = 2.0*S;
-    const double L = 2.0*mesh2.x[k]*mesh2.x[k] + 2.0*mesh2.x[k1]*mesh2.x[k1] + 2.0*mesh2.x[k2]*mesh2.x[k2]
-        - 2.0*mesh2.x[k]*mesh2.x[k1] - 2.0*mesh2.x[k]*mesh2.x[k2] - 2.0*mesh2.x[k1]*mesh2.x[k2] +
-        2.0*mesh2.y[k]*mesh2.y[k] + 2.0*mesh2.y[k1]*mesh2.y[k1] + 2.0*mesh2.y[k2]*mesh2.y[k2]
-        - 2.0*mesh2.y[k]*mesh2.y[k1] - 2.0*mesh2.y[k]*mesh2.y[k2] - 2.0*mesh2.y[k1]*mesh2.y[k2];
+    const double L = 2.0*pc.x*pc.x + 2.0*pa.x*pa.x + 2.0*pb.x*pb.x
+        - 2.0*pc.x*pa.x - 2.0*pc.x*pb.x - 2.0*pa.x*pb.x +
+        2.0*pc.y*pc.y + 2.0*pa.y*pa.y + 2.0*pb.y*pb.y
+        - 2.0*pc.y*pa.y - 2.0*pc.y*pb.y - 2.0*pa.y*pb.y;
 
-    const double Lx = 4.0*mesh2.x[k] - 2.0*(mesh2.x[k1]+mesh2.x[k2]);
-    const double Ly = 4.0*mesh2.y[k] - 2.0*(mesh2.y[k1]+mesh2.y[k2]);
+    const double Lx = 4.0*pc.x - 2.0*(pa.x+pb.x);
+    const double Ly = 4.0*pc.y - 2.0*(pa.y+pb.y);
 
-    const double Hx = (mesh2.y[k2]-mesh2.y[k1])/2.0 + (S*(mesh2.y[k2]-mesh2.y[k1]))/2.0/std::sqrt(S*S + 4.0*delta*delta);
-    const double Hy = (mesh2.x[k1]-mesh2.x[k2])/2.0 + (S*(mesh2.x[k1]-mesh2.x[k2]))/2.0/std::sqrt(S*S + 4.0*delta*delta);
+    const double Hx = (pb.y-pa.y)/2.0 + (S*(pb.y-pa.y))/2.0/std::sqrt(S*S + 4.0*delta*delta);
+    const double Hy = (pa.x-pb.x)/2.0 + (S*(pa.x-pb.x))/2.0/std::sqrt(S*S + 4.0*delta*delta);
 
     const double f = std::pow(2.0*L/H/4.0/std::sqrt(3.0), n - 1);
     dx[0] = (2.0*Lx*H - 2.0*Hx*L)/H/H/4.0/std::sqrt(3.0);
@@ -127,7 +119,10 @@ static double orient2d(double a1, double a2, double b1, double b2, double c1, do
 }
 static double det2i3(int v1, int v2, int v3) {
     double r;
-    r = orient2d(mesh2.x[v1], mesh2.y[v1], mesh2.x[v2], mesh2.y[v2], mesh2.x[v3], mesh2.y[v3]);
+    const Point &p1 = mesh2.pts[v1];
+    const Point &p2 = mesh2.pts[v2];
+    const Point &p3 = mesh2.pts[v3];
+    r = orient2d(p1.x, p1.y, p2.x, p2.y, p3.x, p3.y);
     return  r;
 }
 static int idet2i3(int v1, int v2, int v3) {
@@ -137,14 +132,15 @@ static int idet2i3(int v1, int v2, int v3) {
     else return  0;
 }
 
-
 static int intsect(int a, int b, int c, int u, int v) {
-    int uv, dup = 0;
+    int dup = 0;
 
-    if ((u == a) || (u == b) || (u == c)) dup++;
-    if ((v == a) || (v == b) || (v == c)) dup++;
+    if ((u == a) || (u == b) || (u == c))
+        dup++;
+    if ((v == a) || (v == b) || (v == c))
+        dup++;
     if (dup == 0) {
-        uv = idet2i3(u, v, a) + idet2i3(u, v, b) + idet2i3(u, v, c);
+        int uv = idet2i3(u, v, a) + idet2i3(u, v, b) + idet2i3(u, v, c);
         if ((uv == 3) || (uv == -3)) return 0;
         if (idet2i3(b, c, u) + idet2i3(b, c, v) == -2) return  0;
         if (idet2i3(c, a, u) + idet2i3(c, a, v) == -2) return  0;
@@ -153,7 +149,8 @@ static int intsect(int a, int b, int c, int u, int v) {
         if (idet2i3(b, c, u) + idet2i3(b, c, v) == -1) return  0;
         if (idet2i3(c, a, u) + idet2i3(c, a, v) == -1) return  0;
         if (idet2i3(a, b, u) + idet2i3(a, b, v) == -1) return  0;
-    } else return  0;
+    } else
+        return  0;
     return  1;
 }
 static int check(PStrucFace2 e, int pn) {
@@ -186,12 +183,15 @@ static double height(PStrucFace2 e) {
     v0 = e->v1;
     v1 = e->v2;
 
-    x  = mesh2.x[new_vert];
-    y  = mesh2.y[new_vert];
-    x0 = mesh2.x[v0];
-    y0 = mesh2.y[v0];
-    x1 = mesh2.x[v1];
-    y1 = mesh2.y[v1];
+    const Point &np = mesh2.pts[new_vert];
+    const Point &p0 = mesh2.pts[v0];
+    const Point &p1 = mesh2.pts[v1];
+    x  = np.x;
+    y  = np.y;
+    x0 = p0.x;
+    y0 = p0.y;
+    x1 = p1.x;
+    y1 = p1.y;
 
     c = ((x-x0)*(x1-x0) + (y-y0)*(y1-y0)) / ((x1-x0)*(x1-x0) + (y1-y0)*(y1-y0));
     if (c<=0.0)
@@ -202,7 +202,7 @@ static double height(PStrucFace2 e) {
     s = (x0-x)*(y1-y) - (y0-y)*(x1-x);
     r = std::sqrt((x1-x0)*(x1-x0) + (y1-y0)*(y1-y0));
 
-    return fabs(s)/r;
+    return std::fabs(s)/r;
 }
 
 #define CND_MAX 1000
@@ -222,10 +222,10 @@ static int new_point(PStrucFace2 e) {
     v1 = e->v1;
     v2 = e->v2;
 
-    x1 = mesh2.x[v1];
-    y1 = mesh2.y[v1];
-    x2 = mesh2.x[v2];
-    y2 = mesh2.y[v2];
+    x1 = mesh2.pts[v1].x;
+    y1 = mesh2.pts[v1].y;
+    x2 = mesh2.pts[v2].x;
+    y2 = mesh2.pts[v2].y;
 
     b = x1 - x2;
     a = y2 - y1;
@@ -244,6 +244,7 @@ static int new_point(PStrucFace2 e) {
         if (p*p-r*r < p*p*3.0/4.0)
             p = std::sqrt(r*r + p*p*3.0/4.0);
     } else {
+        const double COARSEFACTOR = 1.5;
         p = COARSEFACTOR * std::sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
     }
     if (p < 1.1*r)
@@ -266,9 +267,20 @@ static int new_point(PStrucFace2 e) {
 
     vicinityFaces(x, y, r);
 
+    struct {
+        int v;
+        double qual;
+    } candidate;
+
+    std::vector<candidate> canidates;
+
+    candidates.push_back(candidate{new_vert, func_q(v1, v2, new_vert)});
+/*
     cnd[0] = new_vert;
-    cnd_q[0] = func_q(v1, v2, new_vert);
     ncnd = 1;
+    cnd_q[0] = func_q(v1, v2, new_vert);
+    */
+
     nchk = 0;
     neari = -1;
     rv = rmin;
@@ -382,11 +394,11 @@ static int newTria(int lab) {
     return 0;
 } /*newTria*/
 
-static int fill_eadj(void);
-static int fill_tadj(void);
+static void fill_eadj();
+static void fill_tadj();
 static int opt_func(int nfixed);
 
-extern  char Huge * ppMemory;
+extern  char * ppMemory;
 extern  PStrucFace2  *ptree2face;
 extern  int StopAfterinitRegion;
 extern int    nVRTglobal;
@@ -398,7 +410,7 @@ extern int    nTRIglobal;
  * -1 - zero sized edge (error in user data)
  * -2 - internal search failed (most likely self intersection in front)
  ****************************************************************************/
-int makeTria(void) {
+int makeTria() {
     int i = 0, j, err = 0, smooth = 0;
 
     init();
@@ -439,10 +451,6 @@ int makeTria(void) {
         }
         if (err)
             break;
-        eadj.ia = (int* )realloc(eadj.ia, sizeof(int )*(mesh2.nPoint + 1));
-        eadj.ja = (int* )realloc(eadj.ja, sizeof(int )*(6*mesh2.nTria   ));
-        tadj.ia = (int* )realloc(tadj.ia, sizeof(int )*(mesh2.nPoint + 1));
-        tadj.ja = (edge*)realloc(tadj.ja, sizeof(edge)*(3*mesh2.nTria   ));
         if (SHOWPROGRESS)
             printf("\n");
         fill_eadj();
@@ -468,8 +476,6 @@ int makeTria(void) {
     if (!err) {
         free(ppMemory);
         free(ptree2face);
-        free(eadj.ia),  free(eadj.ja),  free(tadj.ia),  free(tadj.ja);
-        eadj.ia = NULL,  eadj.ja = NULL,  tadj.ia = NULL,  tadj.ja = NULL;
     } else {
         nVRTglobal = mesh2.nPoint;
         nTRIglobal = mesh2.nTria;
@@ -478,88 +484,63 @@ int makeTria(void) {
     return err;
 } /*makeTria*/
 
-static int fill_eadj(void) {
-    int i, j, n;
-    int a, b, c;
+static void fill_eadj() {
+    eadj.clear();
+    eadj.resize(mesh2.nPoint);
 
-    std::vector<std::set<int> > glist(mesh2.nPoint);
-
-    for (i=0; i<mesh2.nTria; i++) {
+    for (int i=0; i<mesh2.nTria; i++) {
+        int a, b, c;
         a = mesh2.v1[i];
         b = mesh2.v2[i];
         c = mesh2.v3[i];
 
-        glist[a].insert(b);
-        glist[a].insert(c);
-        glist[b].insert(c);
-        glist[b].insert(a);
-        glist[c].insert(a);
-        glist[c].insert(b);
+        eadj[a].insert(b);
+        eadj[a].insert(c);
+        eadj[b].insert(c);
+        eadj[b].insert(a);
+        eadj[c].insert(a);
+        eadj[c].insert(b);
     }
-    n = 0;
-    for (j=0; j<mesh2.nPoint; j++) {
-        eadj.ia[j] = n;
-        for (const int &p : glist[j])
-            eadj.ja[n++] = p;
-    }
-    eadj.ia[mesh2.nPoint] = n;
-
-    return n;
 }
 
-static int fill_tadj(void) {
-    std::vector<std::set<edge> > hlist(mesh2.nPoint);
-    int i, j, n;
-    int a;
-    edge b;
+static void fill_tadj() {
+    tadj.clear();
+    tadj.resize(mesh2.nPoint);
 
-    for (i=0; i<mesh2.nTria; i++) {
+    for (int i=0; i<mesh2.nTria; i++) {
+        int a;
+        edge b;
+
         a    = mesh2.v1[i];
         b[0] = mesh2.v2[i];
         b[1] = mesh2.v3[i];
 
-        hlist[a].insert(b);
+        tadj[a].insert(b);
 
         a    = mesh2.v2[i];
         b[0] = mesh2.v3[i];
         b[1] = mesh2.v1[i];
-        hlist[a].insert(b);
+        tadj[a].insert(b);
 
         a    = mesh2.v3[i];
         b[0] = mesh2.v1[i];
         b[1] = mesh2.v2[i];
-        hlist[a].insert(b);
+        tadj[a].insert(b);
     }
-    n = 0;
-    for (j=0; j<mesh2.nPoint; j++) {
-        tadj.ia[j] = n;
-        for (const edge &e : hlist[j]) {
-            tadj.ja[n] = e;
-            n++;
-        }
-    }
-    tadj.ia[mesh2.nPoint] = n;
-    return n;
 }
 
 static int opt_func(int nfixed) {
-    double d, delta, r, ds, x[2], z[2], rs;
-    int j, l, s;
-    int b, c;
-    int pn, n_iters;
-    int *ps;
-    vertex *dx, *bkp;
+    double x[2], z[2];
 
-    ps = (int*)malloc(sizeof(int)*(mesh2.nPoint - nfixed));
-    pn = 0;
-    ds = 0.0;
-    for (j = nfixed; j < mesh2.nPoint; j++) {
-        int p = j;
-        ps[pn++] = p;
-        d = 0.0;
-        s = 0;
-        for (l=eadj.ia[p]; l<eadj.ia[p+1]; l++) {
-            c = eadj.ja[l];
+    std::vector<int> ps;
+
+    double ds = 0.0;
+    for (int p = nfixed; p < mesh2.nPoint; p++) {
+        ps.push_back(p);
+
+        double d = 0.0;
+        int s = 0;
+        for (const int &c : eadj[p]) {
             d += dist(p, c);
             s++;
         }
@@ -567,85 +548,78 @@ static int opt_func(int nfixed) {
             d /= s;
         ds += d;
     }
-    if (pn == 0)  {
-        free(ps);
+    if (ps.size() == 0)
         return 0;
-    }
 
-    ds /= pn;
+    ds /= ps.size();
     //printf("ds=%lf\n", ds);
 
-    dx  = (vertex*)malloc(sizeof(vertex)*pn);
-    bkp = (vertex*)malloc(sizeof(vertex)*pn);
-    for (j=0; j<pn; j++) {
+    std::vector<vertex> dx(ps.size());
+    std::vector<vertex> bkp(ps.size());
+
+    for (size_t j = 0; j < ps.size(); j++) {
         int p = ps[j];
         bkp[j][0] = mesh2.x[p];
         bkp[j][1] = mesh2.y[p];
     }
 
-    delta = 1.0;
-    n_iters = 100; // 4000
-    d = 0.25 * ds * ds / n_iters;  // 1.0
-    while (1) {
-        for (s=0; s < n_iters; s++) {
-            delta = 0.01 * ds * ds * (1.0 - 0.9*s/n_iters);
+    const int n_iters = 100; // 4000
+    double d = 0.25 * ds * ds / n_iters;  // 1.0
 
-            //	delta = -as / n_iters;
-            rs = 0.0;
-            for (j=0; j<pn; j++) {
-                int p = ps[j];
-                x[0] = 0.0;
-                x[1] = 0.0;
-                for (l = tadj.ia[p]; l < tadj.ia[p+1]; l++) {
-                    b = tadj.ja[l][0];
-                    c = tadj.ja[l][1];
-                    func_xy(p, b, c, z, delta, 8);
-                    x[0] -= z[0];
-                    x[1] -= z[1];
-                }
-                r = std::sqrt(x[0]*x[0] + x[1]*x[1]);
-                if (r > 1.0/ds) {
-                    r = 1.0/ds*(1.0 + log(r*ds))/r;
-                    x[0] *= r;
-                    x[1] *= r;
-                }
-                dx[j][0] = x[0];
-                dx[j][1] = x[1];
-                r = std::sqrt(x[0]*x[0] + x[1]*x[1]);
-                if (rs < r)
-                    rs = r;
+    for (int s = 0; s < n_iters; s++) {
+        const double delta = 0.01 * ds * ds * (1.0 - 0.9*s/n_iters);
+
+        //	delta = -as / n_iters;
+        double rs = 0.0;
+        for (size_t j = 0; j < ps.size(); j++) {
+            int p = ps[j];
+            x[0] = 0.0;
+            x[1] = 0.0;
+            for (const edge &e : tadj[p]) {
+                int b = e[0];
+                int c = e[1];
+                func_xy(p, b, c, z, delta, 8);
+                x[0] -= z[0];
+                x[1] -= z[1];
             }
-            for (j=0; j<pn; j++) {
-                int p = ps[j];
-                mesh2.x[p] += d*dx[j][0];
-                mesh2.y[p] += d*dx[j][1];
+            double r = std::sqrt(x[0]*x[0] + x[1]*x[1]);
+            if (r > 1.0/ds) {
+                r = 1.0/ds*(1.0 + log(r*ds))/r;
+                x[0] *= r;
+                x[1] *= r;
             }
-            if (SHOWPROGRESS) {
-                printf(" Smoothing %d%%\n", s+1);
-                fflush(stdout);
-            }
+            dx[j][0] = x[0];
+            dx[j][1] = x[1];
+            r = std::sqrt(x[0]*x[0] + x[1]*x[1]);
+            if (rs < r)
+                rs = r;
         }
-        if (SHOWPROGRESS)
-            printf(" Smoothing done\n");
-        break;
+        for (size_t j = 0; j < ps.size(); j++) {
+            int p = ps[j];
+            mesh2.x[p] += d*dx[j][0];
+            mesh2.y[p] += d*dx[j][1];
+        }
+        if (SHOWPROGRESS) {
+            printf(" Smoothing %d%%\n", s+1);
+            fflush(stdout);
+        }
     }
-    s = 0;
-    for (j=0; j<mesh2.nTria; j++) {
+    if (SHOWPROGRESS)
+        printf(" Smoothing done\n");
+
+    int s = 0;
+    for (int j = 0; j < mesh2.nTria; j++)
         if (func_q(mesh2.v1[j], mesh2.v2[j], mesh2.v3[j]) <= 0.0)
             s++;
-    }
+
     if (s) {
         fprintf(stderr,"aniAFT: Quality improvement failed, falling back to simple smoothing\n");
-        for (j=0; j<pn; j++) {
+        for (size_t j = 0; j < ps.size(); j++) {
             int p = ps[j];
             mesh2.x[p] = bkp[j][0];
             mesh2.y[p] = bkp[j][1];
         }
     }
-
-    free(ps);
-    free(dx);
-    free(bkp);
 
     return s;
 }

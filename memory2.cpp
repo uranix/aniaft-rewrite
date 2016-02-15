@@ -12,21 +12,21 @@ extern  StrucTree2  tree2;
 
 
 /* static  function */
-static char Huge *hugeAccess( char Huge * p, unsigned long n );
+static char *hugeAccess( char  * p, unsigned long n );
 static void initFarMemory( void );
 static void initNearMemory( void );
 
 
-static char Huge *hugeAccess( char Huge * p, unsigned long n )
+static char  *hugeAccess( char  * p, unsigned long n )
 {
    p += n;
    return( p );
 } /*hugeAccess*/
 
 
-void Near *nearAlloc( unsigned int n )
+void *nearAlloc( unsigned int n )
 {
-   void Near *p;
+   void *p;
 
    p = malloc(n);
    if (p == NULL) perror("nearAlloc");
@@ -35,7 +35,7 @@ void Near *nearAlloc( unsigned int n )
 } /*nearAlloc*/
 
 
-char Huge *    ppMemory;
+char  *    ppMemory;
 PStrucFace2  *ptree2face;
 
 /*
@@ -47,10 +47,10 @@ static void initFarMemory( void )
 {
    int            i,allSize=0,size[100];
    unsigned long  maxMemory=0,allMemory=0,sMemory[100];
-   char Huge *    pMemory=NULL;
+   char  *    pMemory=NULL;
 
 
-   mesh2.neigbor = (int **)farmalloc( (MAX_NEIGBOR2+1)*sizeof(int Huge *) );
+   mesh2.neigbor = (int **)malloc( (MAX_NEIGBOR2+1)*sizeof(int  *) );
    if( mesh2.neigbor == NULL )
        perror("farMemory");
 
@@ -71,28 +71,28 @@ static void initFarMemory( void )
 /* end  distribution  of  memory */
 
 /* init  memory  ptr */
-   pMemory = (char *)farmalloc( allMemory );
+   pMemory = (char *)malloc( allMemory );
    ppMemory = pMemory;
    if( pMemory == NULL )  perror("farMemory");
 
    mesh2.maxPoint = sMemory[0]/( 2*sizeof(double) + (MAX_NEIGBOR2+1)*sizeof(int) );
-   mesh2.x = (double Huge *)pMemory;
+   mesh2.x = (double  *)pMemory;
    pMemory = hugeAccess( pMemory, mesh2.maxPoint*sizeof(double) );
-   mesh2.y = (double Huge *)pMemory;
+   mesh2.y = (double  *)pMemory;
    pMemory = hugeAccess( pMemory, mesh2.maxPoint*sizeof(double) );
    for(i=0;i<=MAX_NEIGBOR2;i++){
-      mesh2.neigbor[i] =(int Huge *) pMemory;
+      mesh2.neigbor[i] =(int  *) pMemory;
       pMemory = hugeAccess( pMemory, mesh2.maxPoint*sizeof(int) );
    }
 
    mesh2.maxTria = sMemory[1]/( 4*sizeof(int) );
-   mesh2.v1 = (int Huge *)pMemory;
+   mesh2.v1 = (int  *)pMemory;
    pMemory  = hugeAccess( pMemory, mesh2.maxTria*sizeof(int) );
-   mesh2.v2 = (int Huge *)pMemory;
+   mesh2.v2 = (int  *)pMemory;
    pMemory  = hugeAccess( pMemory, mesh2.maxTria*sizeof(int) );
-   mesh2.v3 = (int Huge *)pMemory;
+   mesh2.v3 = (int  *)pMemory;
    pMemory  = hugeAccess( pMemory, mesh2.maxTria*sizeof(int) );
-   mesh2.label = (int Huge *)pMemory;
+   mesh2.label = (int  *)pMemory;
    pMemory  = hugeAccess( pMemory, mesh2.maxTria*sizeof(int) );
 /* end  init  memory  ptr */
 

@@ -19,10 +19,6 @@ typedef struct {
    double       x,y;             /*  global  for  recursive  remove  &  insert  function  */
 } StrucTree2;
 
-#define  EMPTY  0
-#define  FACE   1
-#define  TREE   2
-
 /* exported  function */
 int  direction(double x,double y,double xc,double yc);
 void center(double *x,double *y,double side,int d);

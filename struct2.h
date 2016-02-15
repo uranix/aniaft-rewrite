@@ -1,52 +1,50 @@
 #ifndef H_STRUCT2_MESH2D
 #define H_STRUCT2_MESH2D
 
-#define getch       getchar
-#define farfree     free
-#define farmalloc   malloc
-#define Huge
-#define Far
-#define Near
+#include <vector>
 
-#define  GRAF     0
+struct Point {
+    double x, y;
+};
 
+struct Triangle {
+    int v1, v2, v3;
+    int label;
+};
 
 typedef struct{
-   int     nPoint,nTria,nSmooth;
-   int     nRegion,nRLine,iRLine; /**/
-   int     **boundVert;
-   int     *nVert,*region,*bCut,*nRPoint,*nRTria;
-   long    maxPoint,maxTria;             /**/
-   double  Huge *x;
-   double  Huge *y;
-   int     Huge *v1;
-   int     Huge *v2;
-   int     Huge *v3;
-   int     Huge *label;
-   int Huge *( Huge * neigbor ); /**/
+    int     nPoint, nSmooth;
+    int     nRegion,nRLine,iRLine; /**/
+    int     **boundVert;
+    int     *nVert,*region,*bCut,*nRPoint,*nRTria;
 
-   char    Huge *bPoint;
-   char    Huge *bTria;
-   int Huge *( Huge * neigTria ); /**/
-   int     Huge *vb;
-   int     Huge *ve;
-   int     Huge *tria1;
-   int     Huge *tria2;
-   int     nEdge;
+    std::vector<Point> pts;
+    std::vector<Triangle> tri;
 
-   double  size;
-   char    outFileName[128];
-   char    inFileName[128];
-   char    parFileName[128];
-   char    debFileName[128];
-   char    debug;
+    std::vector<std::vector<int>> neib;
+
+    char    *bPoint;
+    char    *bTria;
+    int     **neigTria;
+    int     *vb;
+    int     *ve;
+    int     *tria1;
+    int     *tria2;
+    int     nEdge;
+
+    double  size;
+    char    outFileName[128];
+    char    inFileName[128];
+    char    parFileName[128];
+    char    debFileName[128];
+    char    debug;
 }  StrucMesh2;
 
 
 typedef struct{
-   int     v1,v2;     /**/
-   int     f;          /* number  of  face       */
-   double  x,y,s;    /**/
+    int     v1,v2;     /**/
+    int     f;          /* number  of  face       */
+    double  x,y,s;    /**/
 }  StrucFace2;
 typedef  StrucFace2  *PStrucFace2;
 
@@ -67,8 +65,8 @@ typedef  StrucNode2d  *PStrucNode2d;
 typedef struct {
     int           flag;
     union {
-	PStrucFace2 faceNode;
-	int v;
+        PStrucFace2 faceNode;
+        int v;
     } u;
 } StrucNode2;
 typedef  StrucNode2  *PStrucNode2;

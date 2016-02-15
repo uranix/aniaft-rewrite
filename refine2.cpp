@@ -257,10 +257,10 @@ void calcEdge( void )
     unsigned long p;
 
     p = (unsigned long)3*mesh2.maxPoint*sizeof(int);
-    mesh2.vb = (int Huge *)farmalloc(p);
-    mesh2.ve = (int Huge *)farmalloc(p);
-    mesh2.tria1 = (int Huge *)farmalloc(p);
-    mesh2.tria2 = (int Huge *)farmalloc(p);
+    mesh2.vb = (int  *)malloc(p);
+    mesh2.ve = (int  *)malloc(p);
+    mesh2.tria1 = (int  *)malloc(p);
+    mesh2.tria2 = (int  *)malloc(p);
     if( mesh2.vb == NULL || mesh2.vb == NULL || mesh2.tria1 == NULL || mesh2.tria2 == NULL ) {
         fprintf(stderr, "aniAFT: out of memory\n");
         return;
@@ -321,13 +321,13 @@ void initRegularity( void )
     unsigned long p;
 
     p = (unsigned long)mesh2.maxPoint*sizeof(char);
-    mesh2.bPoint = (char Huge *)farmalloc(p);
+    mesh2.bPoint = (char  *)malloc(p);
     if( mesh2.bPoint == NULL ) {
         fprintf(stderr, "aniAFT: out of memory\n");
         return;
     }
     p = (unsigned long)mesh2.maxTria*sizeof(char);
-    mesh2.bTria = (char Huge *)farmalloc(p);
+    mesh2.bTria = (char  *)malloc(p);
     if( mesh2.bTria == NULL ) {
         fprintf(stderr, "aniAFT: out of memory\n");
         return;
@@ -342,13 +342,13 @@ void initRegularity( void )
     for(i=mesh2.nTria;i<mesh2.maxTria;i++)
         mesh2.bTria[i] = 0;
 
-    mesh2.neigTria = (int **)farmalloc( (MAX_NEIGBOR2+1)*sizeof(int Huge *) );
+    mesh2.neigTria = (int **)malloc( (MAX_NEIGBOR2+1)*sizeof(int  *) );
     if( mesh2.neigTria == NULL ) {
         fprintf(stderr, "aniAFT: out of memory\n");
         return;
     }
     for(i=0;i<=MAX_NEIGBOR2;i++){
-        mesh2.neigTria[i] = (int Huge *) farmalloc(mesh2.maxPoint*sizeof(int));
+        mesh2.neigTria[i] = (int  *) malloc(mesh2.maxPoint*sizeof(int));
         if( mesh2.neigTria[i] == NULL ) {
             fprintf(stderr, "aniAFT: out of memory\n");
             return;
