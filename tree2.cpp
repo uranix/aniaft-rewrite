@@ -7,7 +7,7 @@
 
 
 /* extern  variables */
-extern StrucMesh2  mesh2;
+extern StrucMesh2  mesh;
 extern int boolFAF;
 
 /* global  variables */
@@ -133,7 +133,7 @@ aaa:i = 0;
 PStrucFace2 addFace(int v1, int v2, int twin )
 {
     int         i,d;
-    double      x,y,x1=-1.0,y1=-1.0;
+    double      x1=-1.0,y1=-1.0;
     double      xc=0.5,yc=0.5,side=0.5;
     PStrucFace2 face;
     PStrucNode2d old_node,node;
@@ -143,17 +143,24 @@ PStrucFace2 addFace(int v1, int v2, int twin )
     face = (StrucFace2*)nearAlloc( S_StrucFace2 );
     face->v1 = v1;
     face->v2 = v2;
+
+    const Point &p1 = mesh.pts[v1];
+    const Point &p2 = mesh.pts[v2];
+
+    double x, y;
+
     if( twin == 0 ){
-        x = (mesh2.x[v1]+mesh2.x[v2])/2.;
-        y = (mesh2.y[v1]+mesh2.y[v2])/2.;
+        x = (p1.x + p2.x)/2.;
+        y = (p1.y + p2.y)/2.;
     } else {
-        x = 0.49*mesh2.x[v1]+0.51*mesh2.x[v2];
-        y = 0.49*mesh2.y[v1]+0.51*mesh2.y[v2];
+        x = 0.49*p1.x + 0.51*p2.x;
+        y = 0.49*p1.y + 0.51*p2.y;
     }
     face->x=x;
     face->y=y;
-    face->s = distance(mesh2.x[v1],mesh2.y[v1],mesh2.x[v2],mesh2.y[v2]);
-    if( (x<0.)||(x>1.)||(y<0.)||(y>1) ) {
+    face->s = distance(p1.x, p1.y, p2.x, p2.y);
+
+    if ((x<0.)||(x>1.)||(y<0.)||(y>1)) {
         printf( "x= %lf,  y= %lf ", x, y );
         fprintf(stderr, "aniAFT: out of bouding box (wrong orientation in input?)\n");
     }
@@ -258,9 +265,10 @@ double nearest2( int *vert, double x, double y, double size )
     vicinityFaces(x,y,size);
     for(i=0;i<tree2.nVicinityFace;i++){
         face = tree2.vicinityFace[i];
-        v[0] = face->v1;  v[1] = face->v2;
+        v[0] = face->v1;
+        v[1] = face->v2;
         for(j=0;j<2;j++){
-            p = distance(mesh2.x[v[j]],mesh2.y[v[j]],x,y);
+            p = distance(mesh.pts[v[j]].x,mesh.pts[v[j]].y,x,y);
             if(p < dist){
                 dist = p;
                 vn = v[j];

@@ -6,7 +6,7 @@
 #include "memory2.h"
 #include "aft2d.h"
 
-extern  StrucMesh2  mesh2;
+extern  StrucMesh2  mesh;
 unsigned int _stklen=24000u;
 
 double ReferenceCrd[2];
@@ -22,7 +22,7 @@ int    nBrglobal, *brglobal;
 int    nVrglobal;
 double *vrglobal, *vrbrglobal;
 
-int    boolFAFglobal, mesh2nSmoothglobal;
+int    boolFAFglobal, meshnSmoothglobal;
 double SIglobal, S1global, SMglobal;
 
 int    nVRTglobal;
@@ -129,7 +129,7 @@ int aft2dfront_(
     S1global        = 0.1 ;
     SIglobal        = 0.2;
     SMglobal        = 0.35;
-    mesh2nSmoothglobal  = 5;
+    meshnSmoothglobal  = 5;
     StopAfterinitRegion = 0;
 
 
@@ -229,7 +229,7 @@ int aft2dboundary_( int *pnVert, double *bv,
 
     boolFAFglobal = 0;
     S1global        = hsze[0];
-    mesh2nSmoothglobal = 5;
+    meshnSmoothglobal = 5;
     StopAfterinitRegion = 0;
 
 

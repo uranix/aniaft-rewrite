@@ -5,15 +5,25 @@
 
 struct Point {
     double x, y;
+    bool remove;
+    bool skip_neib;
+    std::vector<int> neib;
+    std::vector<int> neibTria;
+    Point(double x, double y) : x(x), y(y), remove(false) { }
+    Point() : remove(false) { }
+    void move(double xx, double yy) { x = xx; y = yy; }
 };
 
 struct Triangle {
     int v1, v2, v3;
     int label;
+    bool remove;
+    Triangle(int v1, int v2, int v3, int lab) : v1(v1), v2(v2), v3(v3), label(lab), remove(false) { }
+    Triangle() : remove(false) { }
 };
 
 typedef struct{
-    int     nPoint, nSmooth;
+    int     nSmooth;
     int     nRegion,nRLine,iRLine; /**/
     int     **boundVert;
     int     *nVert,*region,*bCut,*nRPoint,*nRTria;
@@ -21,16 +31,11 @@ typedef struct{
     std::vector<Point> pts;
     std::vector<Triangle> tri;
 
-    std::vector<std::vector<int>> neib;
-
-    char    *bPoint;
-    char    *bTria;
-    int     **neigTria;
-    int     *vb;
-    int     *ve;
-    int     *tria1;
-    int     *tria2;
-    int     nEdge;
+//    int     **neigTria;
+    std::vector<int> vb;
+    std::vector<int> ve;
+    std::vector<int> tria1;
+    std::vector<int> tria2;
 
     double  size;
     char    outFileName[128];

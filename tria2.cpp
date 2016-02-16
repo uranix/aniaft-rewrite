@@ -13,7 +13,7 @@
 
 #define SHOWPROGRESS 1
 
-extern  StrucMesh2  mesh2;
+extern  StrucMesh2  mesh;
 extern  StrucTree2  tree2;
 
 extern  int boolFAF;
@@ -56,15 +56,15 @@ std::vector<std::set<int> > eadj;
 std::vector<std::set<edge> > tadj;
 
 static double dist(int  a, int b) {
-    const Point &pa = mesh2.pts[a];
-    const Point &pb = mesh2.pts[b];
+    const Point &pa = mesh.pts[a];
+    const Point &pb = mesh.pts[b];
     return std::sqrt((pa.x - pb.x)*(pa.x - pb.x) + (pa.y - pb.y)*(pa.y - pb.y));
 }
 
 static double func_q(int a, int b, int c) {
-    const Point &pa = mesh2.pts[a];
-    const Point &pb = mesh2.pts[b];
-    const Point &pc = mesh2.pts[c];
+    const Point &pa = mesh.pts[a];
+    const Point &pb = mesh.pts[b];
+    const Point &pc = mesh.pts[c];
     const double S = (
             pb.x*pa.y - pa.x*pb.y +
             pc.x*(pb.y-pa.y) +
@@ -78,9 +78,9 @@ static double func_q(int a, int b, int c) {
 }
 
 static int func_xy(int c, int a, int b, double dx[2], double delta, int n) {
-    const Point &pa = mesh2.pts[a];
-    const Point &pb = mesh2.pts[b];
-    const Point &pc = mesh2.pts[c];
+    const Point &pa = mesh.pts[a];
+    const Point &pb = mesh.pts[b];
+    const Point &pc = mesh.pts[c];
     const double S = (
             pb.x*pa.y - pa.x*pb.y +
             pc.x*(pb.y-pa.y) +
@@ -119,9 +119,9 @@ static double orient2d(double a1, double a2, double b1, double b2, double c1, do
 }
 static double det2i3(int v1, int v2, int v3) {
     double r;
-    const Point &p1 = mesh2.pts[v1];
-    const Point &p2 = mesh2.pts[v2];
-    const Point &p3 = mesh2.pts[v3];
+    const Point &p1 = mesh.pts[v1];
+    const Point &p2 = mesh.pts[v2];
+    const Point &p3 = mesh.pts[v3];
     r = orient2d(p1.x, p1.y, p2.x, p2.y, p3.x, p3.y);
     return  r;
 }
@@ -153,6 +153,7 @@ static int intsect(int a, int b, int c, int u, int v) {
         return  0;
     return  1;
 }
+
 static int check(PStrucFace2 e, int pn) {
     int v1, v2, i, p1, p2;
 
@@ -183,9 +184,9 @@ static double height(PStrucFace2 e) {
     v0 = e->v1;
     v1 = e->v2;
 
-    const Point &np = mesh2.pts[new_vert];
-    const Point &p0 = mesh2.pts[v0];
-    const Point &p1 = mesh2.pts[v1];
+    const Point &np = mesh.pts[new_vert];
+    const Point &p0 = mesh.pts[v0];
+    const Point &p1 = mesh.pts[v1];
     x  = np.x;
     y  = np.y;
     x0 = p0.x;
@@ -206,13 +207,35 @@ static double height(PStrucFace2 e) {
 }
 
 #define CND_MAX 1000
+
+struct BestCandidates {
+    size_t cnd_max;
+
+    std::vector<std::pair<int, double> > cnd;
+
+    BestCandidates(size_t cnd_max = CND_MAX) : cnd_max(cnd_max) {
+    }
+
+    bool insert(int v, double q) {
+        decltype(cnd)::iterator k;
+        for (k = cnd.begin(); k != cnd.end(); k++) {
+            if (k->first == v)
+                return false;
+            if (q > k->second)
+                break;
+        }
+        cnd.insert(k, std::make_pair(v, q));
+        if (cnd.size() > cnd_max)
+            cnd.pop_back();
+        return true;
+    }
+};
+
 static int new_point(PStrucFace2 e) {
     double p, a, b, r, q;
     double x, y, x1, y1, x2, y2;
-    int i, j, k, m, pn;
+    int m;
     int v1, v2;
-    int ncnd, cnd[CND_MAX];
-    double cnd_q[CND_MAX];
     int nchk, chk[CND_MAX];
     int neari;
     double radius, rmin, rv;
@@ -222,10 +245,10 @@ static int new_point(PStrucFace2 e) {
     v1 = e->v1;
     v2 = e->v2;
 
-    x1 = mesh2.pts[v1].x;
-    y1 = mesh2.pts[v1].y;
-    x2 = mesh2.pts[v2].x;
-    y2 = mesh2.pts[v2].y;
+    x1 = mesh.pts[v1].x;
+    y1 = mesh.pts[v1].y;
+    x2 = mesh.pts[v2].x;
+    y2 = mesh.pts[v2].y;
 
     b = x1 - x2;
     a = y2 - y1;
@@ -254,8 +277,8 @@ static int new_point(PStrucFace2 e) {
     y = 0.5 * (y1 + y2) + b * std::sqrt(p*p-r*r);
 
     addPoint(x, y);
-    mesh2.nPoint--;
-    new_vert = mesh2.nPoint;
+    mesh.nPoint--;
+    new_vert = mesh.nPoint;
 
     /*____________________ TEST __________ TEST ____________________________*/
 
@@ -267,68 +290,41 @@ static int new_point(PStrucFace2 e) {
 
     vicinityFaces(x, y, r);
 
-    struct {
-        int v;
-        double qual;
-    } candidate;
-
-    std::vector<candidate> canidates;
-
-    candidates.push_back(candidate{new_vert, func_q(v1, v2, new_vert)});
-/*
-    cnd[0] = new_vert;
-    ncnd = 1;
-    cnd_q[0] = func_q(v1, v2, new_vert);
-    */
-
-    nchk = 0;
     neari = -1;
     rv = rmin;
     hc = height(e);
     dirty = 0;
-    for (i = 0; i < tree2.nVicinityFace; i++) {
+
+    BestCandidates cand;
+    cand.insert(new_vert, func_q(v1, v2, new_vert));
+
+    for (int i = 0; i < tree2.nVicinityFace; i++) {
         h = height(tree2.vicinityFace[i]);
-        if (h < 0.5*hc)
-            dirty++;//,  printf("dirty: %lf, %lf\n", hc, h);
-        for (j = 0, pn = tree2.vicinityFace[i]->v1; j < 2; j++, pn = tree2.vicinityFace[i]->v2) {
+        if (h < 0.5*hc) {
+            dirty++;
+//            printf("dirty: %lf, %lf\n", hc, h);
+        }
+//        for (j = 0, pn = tree2.vicinityFace[i]->v1; j < 2; j++, pn = tree2.vicinityFace[i]->v2) {
+        for (const int pn : { tree2.vicinityFace[i]->v1, tree2.vicinityFace[i]->v2 } ) {
             if ((pn==v1) || (pn==v2))
                 continue;
             if (idet2i3(v1, v2, pn) != 1)
                 continue;
-            r = distance(mesh2.x[pn], mesh2.y[pn], x, y);
+            r = distance(mesh.pts[pn].x, mesh.pts[pn].y, x, y);
             if (r < rv) {
                 rv = r;
                 neari = pn;
             }
             q = func_q(v1, v2, pn);
-            for (k=0; k<ncnd; k++) {
-                if (pn == cnd[k])
-                    break;
-                if (q > cnd_q[k])
-                    break;
-            }
-            if (k>=CND_MAX)
-                continue;
-            if (k==ncnd) {
-                cnd[ncnd] = pn;
-                cnd_q[ncnd] = q;
-                ncnd++;
-            } else {
-                if (pn == cnd[k])
-                    continue;
-                for (m=ncnd; m>k; m--) {
-                    cnd[m] = cnd[m-1];
-                    cnd_q[m] = cnd_q[m-1];
-                }
-                cnd[k] = pn;
-                cnd_q[k] = q;
-                ncnd++;
-            }
+
+            cand.insert(pn, q);
         }
     }
-    if (dirty && ncnd > 1)  {
+
+    nchk = 0;
+    if (dirty && cand.cnd.size() > 1)  {
         chk[nchk++] = new_vert;
-        new_vert = cnd[1];
+        new_vert = cand.cnd[1].first;
     }
     if (neari >= 0)
         new_vert = neari;
@@ -337,18 +333,26 @@ static int new_point(PStrucFace2 e) {
         chk[nchk] = new_vert;
         if (check(e, new_vert) == 0)
             return 0;
-        for (k=0; k < ncnd; k++) {
-            new_vert = cnd[k];
+
+        bool broke = false;
+        for (size_t k = 0; k < cand.cnd.size(); k++) {
+            new_vert = cand.cnd[k].first;
+            // search for new_vert in chk
             for (m=0; m <= nchk; m++) {
-                if (new_vert == chk[m])
+                if (new_vert == chk[m]) {
+                    broke = true;
                     break;
+                }
             }
-            if (m>nchk)
+            if (m>nchk) {
+                broke = true;
                 break;
+            }
         }
-        if (k>=ncnd) {
+        if (!broke) {
             return -2;
         }
+
     }
     return  1;
 } /* new_point */
@@ -380,8 +384,8 @@ static int newTria(int lab) {
     if (nn != 0)
         return nn;
 
-    if (new_vert == mesh2.nPoint)
-        mesh2.nPoint++;
+    if (new_vert == mesh.nPoint)
+        mesh.nPoint++;
 
     todelete[0] = e1;
     ntodelete = 1;
@@ -422,9 +426,9 @@ int makeTria() {
         return 0;
     }
 
-    for (i = 1; i <= mesh2.nRegion; i++) {
-        mesh2.nRPoint[i-1] = mesh2.nPoint;
-        mesh2.nRTria[i-1] = mesh2.nTria;
+    for (i = 1; i <= mesh.nRegion; i++) {
+        mesh.nRPoint[i-1] = mesh.nPoint;
+        mesh.nRTria[i-1] = mesh.tri.size();
         minrho = dist(tree2.face[0]->v1, tree2.face[0]->v2);
 
         for (j=0; j<tree2.nFace; j++) {
@@ -444,8 +448,8 @@ int makeTria() {
             err = newTria(i);
             if (err)
                 break;
-            if (SHOWPROGRESS && (mesh2.nTria % 100 == 0)) {
-                printf("Number of Point = %d Number of Tria = %d\n", mesh2.nPoint, mesh2.nTria);
+            if (SHOWPROGRESS && (mesh.tri.size() % 100 == 0)) {
+                printf("Number of Point = %d Number of Tria = %lu\n", mesh.nPoint, mesh.tri.size());
                 fflush(stdout);
             }
         }
@@ -456,17 +460,17 @@ int makeTria() {
         fill_eadj();
         fill_tadj();
 
-        smooth += opt_func(mesh2.nRPoint[i-1]);
+        smooth += opt_func(mesh.nRPoint[i-1]);
 
-        if (i != mesh2.nRegion) {
+        if (i != mesh.nRegion) {
             initAddRegion(i + 1);
         }
-        mesh2.nRPoint[i-1] = mesh2.nPoint - mesh2.nRPoint[i-1];
-        mesh2.nRTria[i-1] = mesh2.nTria - mesh2.nRTria[i-1];
+        mesh.nRPoint[i-1] = mesh.nPoint - mesh.nRPoint[i-1];
+        mesh.nRTria[i-1] = mesh.tri.size() - mesh.nRTria[i-1];
     }
 
 
-    /*	printf("\nRESULT :  %5u     %5u    \n",mesh2.nPoint,mesh2.nTria);*/
+    /*	printf("\nRESULT :  %5u     %5u    \n",mesh.nPoint,mesh.tri.size());*/
     if (!smooth)
         regularity();
 
@@ -477,8 +481,8 @@ int makeTria() {
         free(ppMemory);
         free(ptree2face);
     } else {
-        nVRTglobal = mesh2.nPoint;
-        nTRIglobal = mesh2.nTria;
+        nVRTglobal = mesh.nPoint;
+        nTRIglobal = mesh.tri.size();
     }
 
     return err;
@@ -486,13 +490,13 @@ int makeTria() {
 
 static void fill_eadj() {
     eadj.clear();
-    eadj.resize(mesh2.nPoint);
+    eadj.resize(mesh.nPoint);
 
-    for (int i=0; i<mesh2.nTria; i++) {
+    for (const auto t : mesh.tri) {
         int a, b, c;
-        a = mesh2.v1[i];
-        b = mesh2.v2[i];
-        c = mesh2.v3[i];
+        a = t.v1;
+        b = t.v2;
+        c = t.v3;
 
         eadj[a].insert(b);
         eadj[a].insert(c);
@@ -505,26 +509,26 @@ static void fill_eadj() {
 
 static void fill_tadj() {
     tadj.clear();
-    tadj.resize(mesh2.nPoint);
+    tadj.resize(mesh.nPoint);
 
-    for (int i=0; i<mesh2.nTria; i++) {
+    for (const auto t : mesh.tri) {
         int a;
         edge b;
 
-        a    = mesh2.v1[i];
-        b[0] = mesh2.v2[i];
-        b[1] = mesh2.v3[i];
+        a    = t.v1;
+        b[0] = t.v2;
+        b[1] = t.v3;
 
         tadj[a].insert(b);
 
-        a    = mesh2.v2[i];
-        b[0] = mesh2.v3[i];
-        b[1] = mesh2.v1[i];
+        a    = t.v2;
+        b[0] = t.v3;
+        b[1] = t.v1;
         tadj[a].insert(b);
 
-        a    = mesh2.v3[i];
-        b[0] = mesh2.v1[i];
-        b[1] = mesh2.v2[i];
+        a    = t.v3;
+        b[0] = t.v1;
+        b[1] = t.v2;
         tadj[a].insert(b);
     }
 }
@@ -535,7 +539,7 @@ static int opt_func(int nfixed) {
     std::vector<int> ps;
 
     double ds = 0.0;
-    for (int p = nfixed; p < mesh2.nPoint; p++) {
+    for (int p = nfixed; p < mesh.nPoint; p++) {
         ps.push_back(p);
 
         double d = 0.0;
@@ -555,12 +559,11 @@ static int opt_func(int nfixed) {
     //printf("ds=%lf\n", ds);
 
     std::vector<vertex> dx(ps.size());
-    std::vector<vertex> bkp(ps.size());
+    std::vector<Point> bkp(ps.size());
 
     for (size_t j = 0; j < ps.size(); j++) {
         int p = ps[j];
-        bkp[j][0] = mesh2.x[p];
-        bkp[j][1] = mesh2.y[p];
+        bkp[j] = mesh.pts[p];
     }
 
     const int n_iters = 100; // 4000
@@ -596,8 +599,8 @@ static int opt_func(int nfixed) {
         }
         for (size_t j = 0; j < ps.size(); j++) {
             int p = ps[j];
-            mesh2.x[p] += d*dx[j][0];
-            mesh2.y[p] += d*dx[j][1];
+            mesh.pts[p].x += d*dx[j][0];
+            mesh.pts[p].y += d*dx[j][1];
         }
         if (SHOWPROGRESS) {
             printf(" Smoothing %d%%\n", s+1);
@@ -608,16 +611,15 @@ static int opt_func(int nfixed) {
         printf(" Smoothing done\n");
 
     int s = 0;
-    for (int j = 0; j < mesh2.nTria; j++)
-        if (func_q(mesh2.v1[j], mesh2.v2[j], mesh2.v3[j]) <= 0.0)
+    for (const auto &t : mesh.tri)
+        if (func_q(t.v1, t.v2, t.v3) <= 0.0)
             s++;
 
     if (s) {
         fprintf(stderr,"aniAFT: Quality improvement failed, falling back to simple smoothing\n");
         for (size_t j = 0; j < ps.size(); j++) {
             int p = ps[j];
-            mesh2.x[p] = bkp[j][0];
-            mesh2.y[p] = bkp[j][1];
+            mesh.pts[p] = bkp[j];
         }
     }
 
