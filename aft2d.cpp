@@ -7,6 +7,7 @@
 #include "aft2d.h"
 
 extern  StrucMesh2  mesh;
+extern  StrucTree2  tree;
 unsigned int _stklen=24000u;
 
 double ReferenceCrd[2];
@@ -132,8 +133,8 @@ int aft2dfront_(
     meshnSmoothglobal  = 5;
     StopAfterinitRegion = 0;
 
-
-    err = makeTria();
+    Triangulation tria(mesh, tree, true);
+    err = tria.makeTria();
 
     *pnVRT = nVRTglobal;
     *pnTRI = nTRIglobal;
@@ -232,8 +233,8 @@ int aft2dboundary_( int *pnVert, double *bv,
     meshnSmoothglobal = 5;
     StopAfterinitRegion = 0;
 
-
-    err = makeTria();
+    Triangulation tria(mesh, tree, false);
+    err = tria.makeTria();
 
     *pnVRT = nVRTglobal;
     *pnTRI = nTRIglobal;

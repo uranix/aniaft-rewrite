@@ -11,7 +11,7 @@ extern StrucMesh2  mesh;
 extern int boolFAF;
 
 /* global  variables */
-StrucTree2  tree2;
+StrucTree2  tree;
 
 
 /* static  function */
@@ -62,15 +62,15 @@ double distanceS(double x,double y,double xc,double yc) {
 static void addFaceArray( PStrucFace2  face )
 {
     int son,fath,i;
-    PStrucFace2  cface,*tface=tree2.face;
-    if( tree2.nFace >= tree2.maxFace ) {
+    PStrucFace2  cface,*tface=tree.face;
+    if( tree.nFace >= tree.maxFace ) {
         fprintf(stderr, "aniAFT: no memory for new face in front\n");
         return;
     }
 
-    tface[tree2.nFace] = face;
-    face->f = tree2.nFace;
-    son=++tree2.nFace;
+    tface[tree.nFace] = face;
+    face->f = tree.nFace;
+    son=++tree.nFace;
 aaa:
     fath=son/2;
 
@@ -91,17 +91,17 @@ static void remFaceArray( int  fath )
 {
     int son1,son2,i;
     PStrucFace2 face,*tface;
-    tface = tree2.face;
-    if( (fath >= tree2.nFace) || (fath<0) )  {
+    tface = tree.face;
+    if( (fath >= tree.nFace) || (fath<0) )  {
         fprintf(stderr, "aniAFT: delete face: tree is empty\n");
         return;
     }
 
-    tree2.nFace--;
-    tface[fath]=tface[tree2.nFace];
+    tree.nFace--;
+    tface[fath]=tface[tree.nFace];
     tface[fath]->f=fath;
 aaa:i = 0;
-    if (2*fath+1 < (tree2.nFace-1)) {
+    if (2*fath+1 < (tree.nFace-1)) {
         son1=2*fath+1;
         son2=son1++;
         if ((tface[fath]->s<=tface[son1]->s)&&(tface[fath]->s<=tface[son2]->s))
@@ -115,7 +115,7 @@ aaa:i = 0;
         if ((tface[son2]->s>=tface[fath]->s)&&(tface[fath]->s>tface[son1]->s))
             i=son1;
     }
-    if( 2*fath+1 == (tree2.nFace-1) ){
+    if( 2*fath+1 == (tree.nFace-1) ){
         son1=2*fath+1;
         if((tface[fath]->s>tface[son1]->s)) i=son1;else i=0;
     }
@@ -139,7 +139,7 @@ PStrucFace2 addFace(int v1, int v2, int twin )
     PStrucNode2d old_node,node;
     entrychain  *faceentry, *new_faceentry;
 
-    node=tree2.root;
+    node=tree.root;
     face = (StrucFace2*)nearAlloc( S_StrucFace2 );
     face->v1 = v1;
     face->v2 = v2;
@@ -212,7 +212,7 @@ void remFace( PStrucFace2  face )
     remFaceArray(face->f);
     x = face->x;
     y = face->y;
-    node = tree2.root;
+    node = tree.root;
     while (side>face->s) {
         d = direction(x,y,xc,yc);
         side *= 0.5;
@@ -245,7 +245,7 @@ void remFace( PStrucFace2  face )
         }
     }
     while ( (node->entrycount==0)&&(!node->nodelist[0]&&!node->nodelist[1]&&
-                !node->nodelist[2]&&!node->nodelist[3])&&(node!=tree2.root) ) {
+                !node->nodelist[2]&&!node->nodelist[3])&&(node!=tree.root) ) {
         old_node = node;
         node = node->parent;
         for (i=0;i<4;i++)
@@ -263,8 +263,8 @@ double nearest2( int *vert, double x, double y, double size )
     PStrucFace2  face;
 
     vicinityFaces(x,y,size);
-    for(i=0;i<tree2.nVicinityFace;i++){
-        face = tree2.vicinityFace[i];
+    for(i=0;i<tree.nVicinityFace;i++){
+        face = tree.vicinityFace[i];
         v[0] = face->v1;
         v[1] = face->v2;
         for(j=0;j<2;j++){
@@ -274,7 +274,7 @@ double nearest2( int *vert, double x, double y, double size )
                 vn = v[j];
             }
         }/* for  2  vert  of  face */
-    }/* for  i < tree2.nVicinityFace */
+    }/* for  i < tree.nVicinityFace */
     vert[0] = vn;
 
     return( dist );
@@ -282,16 +282,16 @@ double nearest2( int *vert, double x, double y, double size )
 
 
 static int sectQuad( void )
-    /*  need  Quad     : tree2.xc;  tree2.yc;
-        tree2.side;
-        Vicinity : tree2.xVicinity;  tree2.yVicinity;
-        tree2.sVicinity;
+    /*  need  Quad     : tree.xc;  tree.yc;
+        tree.side;
+        Vicinity : tree.xVicinity;  tree.yVicinity;
+        tree.sVicinity;
         */
 {
-    if( tree2.xc+3*tree2.side < tree2.xVicinity-tree2.sVicinity )  return(0);
-    if( tree2.xc-3*tree2.side > tree2.xVicinity+tree2.sVicinity )  return(0);
-    if( tree2.yc+3*tree2.side < tree2.yVicinity-tree2.sVicinity )  return(0);
-    if( tree2.yc-3*tree2.side > tree2.yVicinity+tree2.sVicinity )  return(0);
+    if( tree.xc+3*tree.side < tree.xVicinity-tree.sVicinity )  return(0);
+    if( tree.xc-3*tree.side > tree.xVicinity+tree.sVicinity )  return(0);
+    if( tree.yc+3*tree.side < tree.yVicinity-tree.sVicinity )  return(0);
+    if( tree.yc-3*tree.side > tree.yVicinity+tree.sVicinity )  return(0);
 
     return(1);
 
@@ -299,9 +299,9 @@ static int sectQuad( void )
 
 
 static void vicinityFacesRec( PStrucNode2d  node )
-    /*  NEED    tree2.xc=0.5;tree2.yc=0.5;tree2.side=0.5;
-        tree2.nVicinityFace=0;
-        tree2.sVicinity , tree2.xVicinity , tree2.yVicinity ,
+    /*  NEED    tree.xc=0.5;tree.yc=0.5;tree.side=0.5;
+        tree.nVicinityFace=0;
+        tree.sVicinity , tree.xVicinity , tree.yVicinity ,
         */
 {
     int         i;
@@ -313,31 +313,31 @@ static void vicinityFacesRec( PStrucNode2d  node )
     for (faceentry = node->firstentry;faceentry;faceentry=faceentry->next) {
         x = faceentry->face->x;
         y = faceentry->face->y;
-        s = distance(x,y,tree2.xVicinity,tree2.yVicinity)-0.5*faceentry->face->s;
-        if (s<=tree2.sVicinity) {
-            tree2.vicinityFace[tree2.nVicinityFace] = faceentry->face;
-            tree2.nVicinityFace++;
-            if (tree2.nVicinityFace > tree2.maxVicinityFace) {
+        s = distance(x,y,tree.xVicinity,tree.yVicinity)-0.5*faceentry->face->s;
+        if (s<=tree.sVicinity) {
+            tree.vicinityFace[tree.nVicinityFace] = faceentry->face;
+            tree.nVicinityFace++;
+            if (tree.nVicinityFace > tree.maxVicinityFace) {
                 fprintf(stderr, "aniAFT: partial result in tree search\n");
                 return;
             }
         }
     }
-    tree2.side *= 0.5;
-    x = tree2.xc;
-    y = tree2.yc;
-    s = tree2.side;
+    tree.side *= 0.5;
+    x = tree.xc;
+    y = tree.yc;
+    s = tree.side;
     if (node->nodelist[0]) {
-        center(&tree2.xc, &tree2.yc, tree2.side, 0);
+        center(&tree.xc, &tree.yc, tree.side, 0);
         if (sectQuad())
             vicinityFacesRec( node->nodelist[0] );
     }
     for (i=1;i<4;i++) {
         if (!node->nodelist[i]) continue;
-        tree2.side = s;
-        tree2.xc = x;
-        tree2.yc = y;
-        center(&tree2.xc, &tree2.yc, tree2.side, i);
+        tree.side = s;
+        tree.xc = x;
+        tree.yc = y;
+        center(&tree.xc, &tree.yc, tree.side, i);
         if (sectQuad())
             vicinityFacesRec( node->nodelist[i] );
     }
@@ -345,15 +345,15 @@ static void vicinityFacesRec( PStrucNode2d  node )
 
 void vicinityFaces( double x, double y, double size )
 {
-    tree2.xc=0.5;
-    tree2.yc=0.5;
-    tree2.side=0.5;
+    tree.xc=0.5;
+    tree.yc=0.5;
+    tree.side=0.5;
 
-    tree2.nVicinityFace = 0;
-    tree2.sVicinity = size;
-    tree2.xVicinity = x;
-    tree2.yVicinity = y;
+    tree.nVicinityFace = 0;
+    tree.sVicinity = size;
+    tree.xVicinity = x;
+    tree.yVicinity = y;
 
-    vicinityFacesRec( tree2.root );
+    vicinityFacesRec( tree.root );
 } /* vicinityFaces */
 

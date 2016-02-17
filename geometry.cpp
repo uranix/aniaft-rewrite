@@ -79,5 +79,5 @@ extern "C" double usersize_(double *xy)
 
     (void)dr2;
 
-    return 0.01;
+    return 0.005;
 }  // userboundary

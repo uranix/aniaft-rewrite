@@ -8,7 +8,7 @@
 
 /* extern  variables */
 extern  StrucMesh2  mesh;
-extern  StrucTree2  tree2;
+extern  StrucTree2  tree;
 
 static void initNearMemory( void );
 
@@ -24,16 +24,16 @@ void *nearAlloc( unsigned int n )
 
 
 char  *    ppMemory;
-PStrucFace2  *ptree2face;
+PStrucFace2  *ptreeface;
 
 static void initNearMemory( void )
 {
-   tree2.root = (PStrucNode2d)nearAlloc( S_StrucNode2d );
-   tree2.maxFace = 500000;
-   tree2.face = (StrucFace2**)nearAlloc( tree2.maxFace*sizeof(PStrucFace2) );
-   ptree2face = tree2.face;
-   tree2.maxVicinityFace = 200;
-   tree2.vicinityFace = (StrucFace2**)nearAlloc( tree2.maxVicinityFace*sizeof(StrucFace2) );
+   tree.root = (PStrucNode2d)nearAlloc( S_StrucNode2d );
+   tree.maxFace = 500000;
+   tree.face = (StrucFace2**)nearAlloc( tree.maxFace*sizeof(PStrucFace2) );
+   ptreeface = tree.face;
+   tree.maxVicinityFace = 200;
+   tree.vicinityFace = (StrucFace2**)nearAlloc( tree.maxVicinityFace*sizeof(StrucFace2) );
 
    return;
 }/*initNearMemory*/
@@ -48,7 +48,7 @@ void initMemory( void )
 
 void freeMemory(void) {
     int i;
-    free(tree2.vicinityFace),  tree2.vicinityFace = NULL;
+    free(tree.vicinityFace),  tree.vicinityFace = NULL;
     free(mesh.nRTria),  mesh.nRTria = NULL;
     free(mesh.nRPoint),  mesh.nRPoint = NULL;
     free(mesh.bCut),  mesh.bCut = NULL;
@@ -56,6 +56,6 @@ void freeMemory(void) {
     free(mesh.nVert),  mesh.nVert = NULL;
     for (i=0; i<mesh.iRLine; i++)  free(mesh.boundVert[i]);
     free(mesh.boundVert),  mesh.boundVert = NULL;
-    while (tree2.nFace > 0)  remFace(tree2.face[0]);
-    free(tree2.root),  tree2.root = NULL;
+    while (tree.nFace > 0)  remFace(tree.face[0]);
+    free(tree.root),  tree.root = NULL;
 }

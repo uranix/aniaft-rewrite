@@ -9,7 +9,7 @@
 #include "region.h"
 
 StrucMesh2  mesh;
-extern StrucTree2  tree2;
+extern StrucTree2  tree;
 extern int boolFAF;
 int boolSize=0,boolNav=0,boolRegul=0;
 
@@ -43,19 +43,18 @@ void init( void )
     strcpy(mesh.debFileName,"debug");
 
     mesh.debug = 1;
-    tree2.nFace = 0;
+    tree.nFace = 0;
 
     initMemory();
     initParameter();
 
-    tree2.root->entrycount = 0;
-    tree2.root->parent = 0;
-    tree2.root->nodelist[0] = 0;
-    tree2.root->nodelist[1] = 0;
-    tree2.root->nodelist[2] = 0;
-    tree2.root->nodelist[3] = 0;
-    tree2.root->firstentry = 0;
-    return;
+    tree.root->entrycount = 0;
+    tree.root->parent = 0;
+    tree.root->nodelist[0] = 0;
+    tree.root->nodelist[1] = 0;
+    tree.root->nodelist[2] = 0;
+    tree.root->nodelist[3] = 0;
+    tree.root->firstentry = 0;
 }
 
 void addPoint(double x, double y) {

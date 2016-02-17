@@ -3,65 +3,20 @@
 
 #include"region.h"
 #include"refine.h"
-#include"tree.h"
 #include"tria.h"
 #include"user.h"
 
-#include <set>
 #include <map>
-#include <vector>
 
-#define SHOWPROGRESS 1
+#define SHOWPROGRESS 0
 
-extern  StrucMesh2  mesh;
-extern  StrucTree2  tree2;
-
-extern  int boolFAF;
-static int new_vert;
-
-static double minrho,alpha,beta;
-
-static PStrucFace2 intedge;
-static int ntodelete;
-static PStrucFace2 todelete[3];
-
-struct edge {
-    int v1, v2;
-    int &operator[](const int i) {
-        if (i == 0)
-            return v1;
-        if (i == 1)
-            return v2;
-        throw;
-    }
-    const int &operator[](const int i) const {
-        if (i == 0)
-            return v1;
-        if (i == 1)
-            return v2;
-        throw;
-    }
-    bool operator< (const edge &o) const {
-        if (v1 < o.v1)
-            return true;
-        if (v1 > o.v2)
-            return false;
-        return v2 < o.v2;
-    }
-};
-
-typedef double vertex[3];
-
-std::vector<std::set<int> > eadj;
-std::vector<std::set<edge> > tadj;
-
-static double dist(int  a, int b) {
+double Triangulation::dist(int  a, int b) const {
     const Point &pa = mesh.pts[a];
     const Point &pb = mesh.pts[b];
     return std::sqrt((pa.x - pb.x)*(pa.x - pb.x) + (pa.y - pb.y)*(pa.y - pb.y));
 }
 
-static double func_q(int a, int b, int c) {
+double Triangulation::func_q(int a, int b, int c) const {
     const Point &pa = mesh.pts[a];
     const Point &pb = mesh.pts[b];
     const Point &pc = mesh.pts[c];
@@ -77,7 +32,7 @@ static double func_q(int a, int b, int c) {
     return  4.0*std::sqrt(3.0)*S/L;
 }
 
-static int func_xy(int c, int a, int b, double dx[2], double delta, int n) {
+void Triangulation::func_xy(int c, int a, int b, double dx[2], double delta) const {
     const Point &pa = mesh.pts[a];
     const Point &pb = mesh.pts[b];
     const Point &pc = mesh.pts[c];
@@ -89,50 +44,55 @@ static int func_xy(int c, int a, int b, double dx[2], double delta, int n) {
     const double H = S + std::sqrt(S*S + 4.0*delta*delta);
     //    H = 2.0*S;
     const double L = 2.0*pc.x*pc.x + 2.0*pa.x*pa.x + 2.0*pb.x*pb.x
-        - 2.0*pc.x*pa.x - 2.0*pc.x*pb.x - 2.0*pa.x*pb.x +
-        2.0*pc.y*pc.y + 2.0*pa.y*pa.y + 2.0*pb.y*pb.y
-        - 2.0*pc.y*pa.y - 2.0*pc.y*pb.y - 2.0*pa.y*pb.y;
+                   - 2.0*pc.x*pa.x - 2.0*pc.x*pb.x - 2.0*pa.x*pb.x
+                   + 2.0*pc.y*pc.y + 2.0*pa.y*pa.y + 2.0*pb.y*pb.y
+                   - 2.0*pc.y*pa.y - 2.0*pc.y*pb.y - 2.0*pa.y*pb.y;
 
     const double Lx = 4.0*pc.x - 2.0*(pa.x+pb.x);
     const double Ly = 4.0*pc.y - 2.0*(pa.y+pb.y);
 
-    const double Hx = (pb.y-pa.y)/2.0 + (S*(pb.y-pa.y))/2.0/std::sqrt(S*S + 4.0*delta*delta);
-    const double Hy = (pa.x-pb.x)/2.0 + (S*(pa.x-pb.x))/2.0/std::sqrt(S*S + 4.0*delta*delta);
+    const double G = std::sqrt(S*S + 4*delta*delta);
+    const double s3 = 1.7320508075688772;
 
-    const double f = std::pow(2.0*L/H/4.0/std::sqrt(3.0), n - 1);
-    dx[0] = (2.0*Lx*H - 2.0*Hx*L)/H/H/4.0/std::sqrt(3.0);
-    dx[1] = (2.0*Ly*H - 2.0*Hy*L)/H/H/4.0/std::sqrt(3.0);
+    const double Hx = (pb.y-pa.y)/2.0 + (S*(pb.y-pa.y))/2.0/G;
+    const double Hy = (pa.x-pb.x)/2.0 + (S*(pa.x-pb.x))/2.0/G;
 
-    dx[0] *= f;
-    dx[1] *= f;
+    const double q = 2.0*L/H/4.0/s3;
+    const double q2 = q * q;
+    const double q4 = q2 * q2;
+    const double f = q * q2 * q4;
 
-    return 0;
+    dx[0] = (2.0*Lx*H - 2.0*Hx*L)/H/H/4.0/s3 * f;
+    dx[1] = (2.0*Ly*H - 2.0*Hy*L)/H/H/4.0/s3 * f;
 }
 
 static double lldet2(double a, double b, double c, double d) {
     return  a*d - b*c;
 }
+
 static double orient2d(double a1, double a2, double b1, double b2, double c1, double c2) {
     double a = a1 - c1,  b = b1 - c1;
     double c = a2 - c2,  d = b2 - c2;
     return lldet2(a, b, c, d);
 }
-static double det2i3(int v1, int v2, int v3) {
-    double r;
+
+double Triangulation::det2i3(int v1, int v2, int v3) const {
     const Point &p1 = mesh.pts[v1];
     const Point &p2 = mesh.pts[v2];
     const Point &p3 = mesh.pts[v3];
-    r = orient2d(p1.x, p1.y, p2.x, p2.y, p3.x, p3.y);
-    return  r;
-}
-static int idet2i3(int v1, int v2, int v3) {
-    double d = det2i3(v2, v1, v3);
-    if (d > 1e-16) return  +1;
-    else if (d < -1e-16) return  -1;
-    else return  0;
+    return orient2d(p1.x, p1.y, p2.x, p2.y, p3.x, p3.y);
 }
 
-static int intsect(int a, int b, int c, int u, int v) {
+int Triangulation::idet2i3(int v1, int v2, int v3) const {
+    double d = det2i3(v2, v1, v3);
+    if (d > 1e-16) 
+        return +1;
+    if (d < -1e-16)
+        return -1;
+    return  0;
+}
+
+int Triangulation::intsect(int a, int b, int c, int u, int v) const {
     int dup = 0;
 
     if ((u == a) || (u == b) || (u == c))
@@ -154,7 +114,7 @@ static int intsect(int a, int b, int c, int u, int v) {
     return  1;
 }
 
-static int check(PStrucFace2 e, int pn) {
+int Triangulation::check(PStrucFace2 e, int pn) {
     int v1, v2, i, p1, p2;
 
     intedge = NULL;
@@ -166,44 +126,41 @@ static int check(PStrucFace2 e, int pn) {
         return 1;
     }
 
-    for (i = 0; i < tree2.nVicinityFace; i++) {
-        p1 = tree2.vicinityFace[i]->v1;
-        p2 = tree2.vicinityFace[i]->v2;
+    for (i = 0; i < tree.nVicinityFace; i++) {
+        p1 = tree.vicinityFace[i]->v1;
+        p2 = tree.vicinityFace[i]->v2;
         if (intsect(v1, v2, pn, p1, p2)) {
-            intedge = tree2.vicinityFace[i];
-            return  1;
+            intedge = tree.vicinityFace[i];
+            return 1;
         }
     }
-    return  0;
+    return 0;
 }
 
-static double height(PStrucFace2 e) {
-    int v0, v1;
-    double x, y, x0, y0, x1, y1, s, r, c;
-
-    v0 = e->v1;
-    v1 = e->v2;
+double Triangulation::height(PStrucFace2 e) const {
+    int v0 = e->v1;
+    int v1 = e->v2;
 
     const Point &np = mesh.pts[new_vert];
     const Point &p0 = mesh.pts[v0];
     const Point &p1 = mesh.pts[v1];
-    x  = np.x;
-    y  = np.y;
-    x0 = p0.x;
-    y0 = p0.y;
-    x1 = p1.x;
-    y1 = p1.y;
+    double x  = np.x;
+    double y  = np.y;
+    double x0 = p0.x;
+    double y0 = p0.y;
+    double x1 = p1.x;
+    double y1 = p1.y;
 
-    c = ((x-x0)*(x1-x0) + (y-y0)*(y1-y0)) / ((x1-x0)*(x1-x0) + (y1-y0)*(y1-y0));
+    double c = ((x-x0)*(x1-x0) + (y-y0)*(y1-y0)) / ((x1-x0)*(x1-x0) + (y1-y0)*(y1-y0));
     if (c<=0.0)
         return std::sqrt((x-x0)*(x-x0) + (y-y0)*(y-y0));
     else if (c>=1.0)
         return std::sqrt((x1-x)*(x1-x) + (y1-y)*(y1-y));
 
-    s = (x0-x)*(y1-y) - (y0-y)*(x1-x);
-    r = std::sqrt((x1-x0)*(x1-x0) + (y1-y0)*(y1-y0));
+    double s = (x0-x)*(y1-y) - (y0-y)*(x1-x);
+    double r = std::sqrt((x1-x0)*(x1-x0) + (y1-y0)*(y1-y0));
 
-    return std::fabs(s)/r;
+    return std::fabs(s) / r;
 }
 
 #define CND_MAX 1000
@@ -232,36 +189,30 @@ struct BestCandidates {
 };
 
 // called from newTria
-static int new_point(PStrucFace2 e) {
-    double p, a, b, r, q;
-    double x, y, x1, y1, x2, y2;
-    int m;
-    int v1, v2;
+int Triangulation::new_point(PStrucFace2 e) {
     int nchk, chk[CND_MAX];
-    int neari;
-    double radius, rmin, rv;
-    double hc, h;
-    int dirty;
 
-    v1 = e->v1;
-    v2 = e->v2;
+    int v1 = e->v1;
+    int v2 = e->v2;
 
-    x1 = mesh.pts[v1].x;
-    y1 = mesh.pts[v1].y;
-    x2 = mesh.pts[v2].x;
-    y2 = mesh.pts[v2].y;
+    double x1 = mesh.pts[v1].x;
+    double y1 = mesh.pts[v1].y;
+    double x2 = mesh.pts[v2].x;
+    double y2 = mesh.pts[v2].y;
 
-    b = x1 - x2;
-    a = y2 - y1;
-    p = std::sqrt(a * a + b * b);
+    double b = x1 - x2;
+    double a = y2 - y1;
+    double p = std::sqrt(a * a + b * b);
 
     if (p == 0.0)
         return -1;
     a /= p;
     b /= p;
-    r = p / 2.0;
+    double r = p / 2.0;
 
-    if (!boolFAF) {
+    double x, y;
+
+    if (!FAF) {
         x = 0.5 * (x1 + x2) + a * 0.3 * p;
         y = 0.5 * (y1 + y2) + b * 0.3 * p;
         p = sizeFace(x, y);
@@ -284,30 +235,29 @@ static int new_point(PStrucFace2 e) {
 
     /*____________________ TEST __________ TEST ____________________________*/
 
-    radius = distance(x, y, x1, y1);
+    double radius = distance(x, y, x1, y1);
 
     r = radius * 1.0001220703125; // 8193. / 8192
-    rmin = (beta*r + minrho + std::sqrt((beta*r - minrho)*(beta*r - minrho) + alpha))/2.0;
+    double rmin = (beta*r + minrho + std::sqrt((beta*r - minrho)*(beta*r - minrho) + alpha))/2.0;
     r = radius * 2.0;
 
     vicinityFaces(x, y, r);
 
-    neari = -1;
-    rv = rmin;
-    hc = height(e);
-    dirty = 0;
+    int neari = -1;
+    double rv = rmin;
+    double hc = height(e);
+    int dirty = 0;
 
     BestCandidates cand;
     cand.insert(new_vert, func_q(v1, v2, new_vert));
 
-    for (int i = 0; i < tree2.nVicinityFace; i++) {
-        h = height(tree2.vicinityFace[i]);
+    for (int i = 0; i < tree.nVicinityFace; i++) {
+        double h = height(tree.vicinityFace[i]);
         if (h < 0.5*hc) {
             dirty++;
 //            printf("dirty: %lf, %lf\n", hc, h);
         }
-//        for (j = 0, pn = tree2.vicinityFace[i]->v1; j < 2; j++, pn = tree2.vicinityFace[i]->v2) {
-        for (const int pn : { tree2.vicinityFace[i]->v1, tree2.vicinityFace[i]->v2 } ) {
+        for (const int pn : { tree.vicinityFace[i]->v1, tree.vicinityFace[i]->v2 } ) {
             if ((pn==v1) || (pn==v2))
                 continue;
             if (idet2i3(v1, v2, pn) != 1)
@@ -317,7 +267,7 @@ static int new_point(PStrucFace2 e) {
                 rv = r;
                 neari = pn;
             }
-            q = func_q(v1, v2, pn);
+            double q = func_q(v1, v2, pn);
 
             cand.insert(pn, q);
         }
@@ -340,6 +290,7 @@ static int new_point(PStrucFace2 e) {
         for (size_t k = 0; k < cand.cnd.size(); k++) {
             new_vert = cand.cnd[k].first;
             // search for new_vert in chk
+            int m;
             for (m=0; m <= nchk; m++) {
                 if (new_vert == chk[m]) {
                     broke = true;
@@ -359,14 +310,14 @@ static int new_point(PStrucFace2 e) {
     return  1;
 }
 
-static int chknadd(int v1, int v2) {
+int Triangulation::chknadd(int v1, int v2) {
     int i, p1, p2;
 
-    for (i = 0; i < tree2.nVicinityFace; i++) {
-        p1 = tree2.vicinityFace[i]->v1;
-        p2 = tree2.vicinityFace[i]->v2;
+    for (i = 0; i < tree.nVicinityFace; i++) {
+        p1 = tree.vicinityFace[i]->v1;
+        p2 = tree.vicinityFace[i]->v2;
         if ((p1==v2) && (p2==v1)) {
-            todelete[ntodelete++] = tree2.vicinityFace[i];
+            todelete[ntodelete++] = tree.vicinityFace[i];
             return 1;
         }
     }
@@ -374,22 +325,17 @@ static int chknadd(int v1, int v2) {
     return 0;
 }
 
-// called from makeTria
-static int newTria(int lab) {
+int Triangulation::newTria(int lab) {
     int nn;
     int v1, v2;
     PStrucFace2 e1;
 
-    e1 = tree2.face[0];
+    e1 = tree.face[0];
     v1 = e1->v1;
     v2 = e1->v2;
     nn = new_point(e1);
     if (nn != 0)
         return nn;
-/*
-    if (new_vert == mesh.nPoint)
-        mesh.nPoint++;
-*/
 
     if (new_vert != (int)mesh.pts.size() - 1)
         mesh.pts.pop_back();
@@ -405,23 +351,13 @@ static int newTria(int lab) {
     return 0;
 }
 
-static void fill_eadj();
-static void fill_tadj();
-static int opt_func(int nfixed);
-
-extern  char * ppMemory;
-extern  PStrucFace2  *ptree2face;
-extern  int StopAfterinitRegion;
+extern char * ppMemory;
+extern PStrucFace2  *ptreeface;
+extern int StopAfterinitRegion;
 extern int    nVRTglobal;
 extern int    nTRIglobal;
 
-
-/* error codes:
- *  0 - success
- * -1 - zero sized edge (error in user data)
- * -2 - internal search failed (most likely self intersection in front)
- ****************************************************************************/
-int makeTria() {
+int Triangulation::makeTria() {
     int i = 0, j, err = 0, smooth = 0;
 
     init();
@@ -429,21 +365,21 @@ int makeTria() {
 
     if ( StopAfterinitRegion != 0 ) {
         free(ppMemory);
-        free(ptree2face);
+        free(ptreeface);
         return 0;
     }
 
     for (i = 1; i <= mesh.nRegion; i++) {
         mesh.nRPoint[i-1] = mesh.pts.size();
         mesh.nRTria[i-1] = mesh.tri.size();
-        minrho = dist(tree2.face[0]->v1, tree2.face[0]->v2);
+        minrho = dist(tree.face[0]->v1, tree.face[0]->v2);
 
-        for (j=0; j<tree2.nFace; j++) {
-            if (minrho > dist(tree2.face[j]->v1, tree2.face[j]->v2))
-                minrho = dist(tree2.face[j]->v1, tree2.face[j]->v2);
+        for (j=0; j<tree.nFace; j++) {
+            if (minrho > dist(tree.face[j]->v1, tree.face[j]->v2))
+                minrho = dist(tree.face[j]->v1, tree.face[j]->v2);
         }
 
-        if (boolFAF)
+        if (FAF)
             minrho *= 0.95;
         else
             minrho = 0.0;
@@ -451,7 +387,7 @@ int makeTria() {
         minrho *= beta;
         alpha = 2.0*minrho*(1.0-beta)/beta;
         alpha *= alpha;
-        while (tree2.nFace > 0) {
+        while (tree.nFace > 0) {
             err = newTria(i);
             if (err)
                 break;
@@ -486,16 +422,16 @@ int makeTria() {
     outMesh();
     if (!err) {
         free(ppMemory);
-        free(ptree2face);
+        free(ptreeface);
     } else {
         nVRTglobal = mesh.pts.size();
         nTRIglobal = mesh.tri.size();
     }
 
     return err;
-} /*makeTria*/
+}
 
-static void fill_eadj() {
+void Triangulation::fill_eadj() {
     eadj.clear();
     eadj.resize(mesh.pts.size());
 
@@ -514,7 +450,7 @@ static void fill_eadj() {
     }
 }
 
-static void fill_tadj() {
+void Triangulation::fill_tadj() {
     tadj.clear();
     tadj.resize(mesh.pts.size());
 
@@ -540,7 +476,7 @@ static void fill_tadj() {
     }
 }
 
-static int opt_func(int nfixed) {
+int Triangulation::opt_func(int nfixed) {
     double x[2], z[2];
 
     std::vector<int> ps;
@@ -565,6 +501,7 @@ static int opt_func(int nfixed) {
     ds /= ps.size();
     //printf("ds=%lf\n", ds);
 
+    typedef double vertex[2];
     std::vector<vertex> dx(ps.size());
     std::vector<Point> bkp(ps.size());
 
@@ -588,7 +525,7 @@ static int opt_func(int nfixed) {
             for (const edge &e : tadj[p]) {
                 int b = e[0];
                 int c = e[1];
-                func_xy(p, b, c, z, delta, 8);
+                func_xy(p, b, c, z, delta);
                 x[0] -= z[0];
                 x[1] -= z[1];
             }
