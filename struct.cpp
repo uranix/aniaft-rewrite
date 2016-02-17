@@ -63,7 +63,7 @@ void addPoint(double x, double y) {
 }
 
 void addTria(int v1, int v2, int v3, int lab) {
-    mesh.tri.push_back(Triangle{v1, v2, v3, lab});
+    mesh.tri.push_back(Triangle(v1, v2, v3, lab));
 }
 
 extern int    nVRTglobal;

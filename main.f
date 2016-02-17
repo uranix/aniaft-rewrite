@@ -30,7 +30,7 @@ c complement of a wing NACA0012 to the unit square
      &                    2,3,0,-1,1,1,0,  7,4,0,-1,1,1,0,              ! outer boundary edges
      &                    3,7,0,-1,1,1,0,                               ! outer boundary edges
      &                    6,7,2,0,11,1,1,                               ! slit  boundary edges
-     &                    6,5,1,-1,2,1,0,  5,6,1,-1,2,1,0/              ! wing  boundary edges
+     &                    6,5,1,-1,2,1,2,  5,6,1,-1,2,1,2/              ! wing  boundary edges
       data             bltail/0,0, 0,0, 0,0, 0,0, 0,0, 0,1, 0,.5, .5,1/ ! curved data for each outer boundary edge
 
       integer nv,nt,nb,nc

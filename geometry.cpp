@@ -77,5 +77,7 @@ extern "C" double usersize_(double *xy)
 
     const double dr2 = dx * dx + dy * dy;
 
-    return 0.005 * exp(10 * dr2);
+    (void)dr2;
+
+    return 0.01;
 }  // userboundary

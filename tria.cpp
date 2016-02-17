@@ -231,6 +231,7 @@ struct BestCandidates {
     }
 };
 
+// called from newTria
 static int new_point(PStrucFace2 e) {
     double p, a, b, r, q;
     double x, y, x1, y1, x2, y2;
@@ -276,9 +277,10 @@ static int new_point(PStrucFace2 e) {
     x = 0.5 * (x1 + x2) + a * std::sqrt(p*p-r*r);
     y = 0.5 * (y1 + y2) + b * std::sqrt(p*p-r*r);
 
+    // XXX the added point lies beyond the end of the array. Cannot emulate that using std::vector
     addPoint(x, y);
-    mesh.nPoint--;
-    new_vert = mesh.nPoint;
+//    mesh.nPoint--;
+    new_vert = mesh.pts.size() - 1;
 
     /*____________________ TEST __________ TEST ____________________________*/
 
@@ -355,7 +357,7 @@ static int new_point(PStrucFace2 e) {
 
     }
     return  1;
-} /* new_point */
+}
 
 static int chknadd(int v1, int v2) {
     int i, p1, p2;
@@ -372,6 +374,7 @@ static int chknadd(int v1, int v2) {
     return 0;
 }
 
+// called from makeTria
 static int newTria(int lab) {
     int nn;
     int v1, v2;
@@ -383,9 +386,13 @@ static int newTria(int lab) {
     nn = new_point(e1);
     if (nn != 0)
         return nn;
-
+/*
     if (new_vert == mesh.nPoint)
         mesh.nPoint++;
+*/
+
+    if (new_vert != (int)mesh.pts.size() - 1)
+        mesh.pts.pop_back();
 
     todelete[0] = e1;
     ntodelete = 1;
@@ -396,7 +403,7 @@ static int newTria(int lab) {
     for (nn = 0; nn < ntodelete; nn++)
         remFace(todelete[nn]);
     return 0;
-} /*newTria*/
+}
 
 static void fill_eadj();
 static void fill_tadj();
@@ -427,7 +434,7 @@ int makeTria() {
     }
 
     for (i = 1; i <= mesh.nRegion; i++) {
-        mesh.nRPoint[i-1] = mesh.nPoint;
+        mesh.nRPoint[i-1] = mesh.pts.size();
         mesh.nRTria[i-1] = mesh.tri.size();
         minrho = dist(tree2.face[0]->v1, tree2.face[0]->v2);
 
@@ -449,7 +456,7 @@ int makeTria() {
             if (err)
                 break;
             if (SHOWPROGRESS && (mesh.tri.size() % 100 == 0)) {
-                printf("Number of Point = %d Number of Tria = %lu\n", mesh.nPoint, mesh.tri.size());
+                printf("Number of Point = %lu Number of Tria = %lu\n", mesh.pts.size(), mesh.tri.size());
                 fflush(stdout);
             }
         }
@@ -465,12 +472,12 @@ int makeTria() {
         if (i != mesh.nRegion) {
             initAddRegion(i + 1);
         }
-        mesh.nRPoint[i-1] = mesh.nPoint - mesh.nRPoint[i-1];
+        mesh.nRPoint[i-1] = mesh.pts.size() - mesh.nRPoint[i-1];
         mesh.nRTria[i-1] = mesh.tri.size() - mesh.nRTria[i-1];
     }
 
 
-    /*	printf("\nRESULT :  %5u     %5u    \n",mesh.nPoint,mesh.tri.size());*/
+    printf("\nRESULT :  %5lu     %5lu    \n", mesh.pts.size(), mesh.tri.size());
     if (!smooth)
         regularity();
 
@@ -481,7 +488,7 @@ int makeTria() {
         free(ppMemory);
         free(ptree2face);
     } else {
-        nVRTglobal = mesh.nPoint;
+        nVRTglobal = mesh.pts.size();
         nTRIglobal = mesh.tri.size();
     }
 
@@ -490,7 +497,7 @@ int makeTria() {
 
 static void fill_eadj() {
     eadj.clear();
-    eadj.resize(mesh.nPoint);
+    eadj.resize(mesh.pts.size());
 
     for (const auto t : mesh.tri) {
         int a, b, c;
@@ -509,7 +516,7 @@ static void fill_eadj() {
 
 static void fill_tadj() {
     tadj.clear();
-    tadj.resize(mesh.nPoint);
+    tadj.resize(mesh.pts.size());
 
     for (const auto t : mesh.tri) {
         int a;
@@ -539,7 +546,7 @@ static int opt_func(int nfixed) {
     std::vector<int> ps;
 
     double ds = 0.0;
-    for (int p = nfixed; p < mesh.nPoint; p++) {
+    for (size_t p = nfixed; p < mesh.pts.size(); p++) {
         ps.push_back(p);
 
         double d = 0.0;

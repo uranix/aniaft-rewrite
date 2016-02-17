@@ -15,6 +15,9 @@ extern  StrucMesh2  mesh;
 extern  int  boolRegul;
 extern  int  boolFAF;
 
+static void calcNeigTria();
+static void calcNeigbor();
+
 double angle( int v1, int v2, int v ) {
     double x1,x2,y1,y2,xx,yy;
 
@@ -42,7 +45,7 @@ void test_quality()
     double da=M_PI/6,min=10.0,max=0.0;
     double min_angle=3.0,max_angle=0.0;
 
-    std::map<size_t, int> n;
+    int na[6] = {0, 0, 0, 0, 0, 0};
 
     for (const auto &tr : mesh.tri) {
         int p1=tr.v1;
@@ -55,11 +58,11 @@ void test_quality()
 
         for(int j = 0; j < 6; j++){
             if ((j*da<a1) && (a1<=j*da+da))
-                n[j]++;
+                na[j]++;
             if ((j*da<a2) && (a2<=j*da+da))
-                n[j]++;
+                na[j]++;
             if ((j*da<a3) && (a3<=j*da+da))
-                n[j]++;
+                na[j]++;
             if (a1>max_angle)
                 max_angle=a1;
             if (a1<min_angle)
@@ -107,15 +110,24 @@ void test_quality()
             max=pp;
     }
 
+    printf("Max edge = %lf, min edge = %lf\n", max, min);
+    printf("Angular info, min = %lf, max = %lf\n", min_angle * 180 / M_PI, max_angle * 180 / M_PI);
+    for (int j = 0; j < 6; j++)
+        printf("j = %d nA = %d perc = %lf\n", j, na[j], 100. * na[j] / 3 / mesh.tri.size());
+
+    calcNeigTria();
+    calcNeigbor();
+
+    std::map<size_t, int> n;
     for (const auto p : mesh.pts)
         n[p.neib.size()]++;
 
     printf("Neigbor number for nP = %7lu nT = %7lu\n", mesh.pts.size(), mesh.tri.size());
     for (const auto &kv : n) {
-        int i = kv.first;
+        size_t i = kv.first;
         int ni = kv.second;
-        printf("neig =%6d  nPoint =%6d  perc = %lf  perc = %lf\n", i, ni,
-                (double)ni/mesh.pts.size(),(double)ni/(mesh.pts.size()-n[0]));
+        printf("neig =%6lu  nPoint =%6d  perc = %lf  perc = %lf\n", i, ni,
+                100. * ni/mesh.pts.size(), 100. * ni/(mesh.pts.size()-n[0]));
     }
 }
 
