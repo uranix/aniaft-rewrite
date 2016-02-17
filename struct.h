@@ -23,31 +23,7 @@ struct Triangle {
     Triangle() : remove(false) { }
 };
 
-typedef struct{
-    int     nSmooth;
-    int     nRegion,nRLine,iRLine; /**/
-    int     **boundVert;
-    int     *nVert,*region,*bCut,*nRPoint,*nRTria;
-
-    std::vector<Point> pts;
-    std::vector<Triangle> tri;
-
-//    int     **neigTria;
-    std::vector<int> vb;
-    std::vector<int> ve;
-    std::vector<int> tria1;
-    std::vector<int> tria2;
-
-    double  size;
-    char    outFileName[128];
-    char    inFileName[128];
-    char    parFileName[128];
-    char    debFileName[128];
-    char    debug;
-}  StrucMesh2;
-
-
-typedef struct{
+typedef struct {
     int     v1,v2;     /**/
     int     f;          /* number  of  face       */
     double  x,y,s;    /**/
@@ -81,20 +57,11 @@ typedef  StrucNode2  *PStrucNode2;
 typedef  PStrucNode2  StrucList2[4];
 typedef  StrucList2   *PStrucList2;
 
-#define  MAX_NEIGBOR2   16
 #define  S_StrucList2  sizeof(StrucList2)
 #define  S_StrucNode2  sizeof(StrucNode2)
 #define  S_StrucFace2  sizeof(StrucFace2)
 
 #define  S_StrucNode2d  sizeof(StrucNode2d)
 #define  S_entrychain  sizeof(entrychain)
-
-
-/* exported  function  function */
-void init( void );
-void addPoint( double x, double y );
-void addTria( int v1, int v2, int v3, int lab );
-void outMesh( void );
-
 
 #endif

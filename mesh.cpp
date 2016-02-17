@@ -27,8 +27,7 @@ void initParameter( void)
 }  /*initParameter*/
 
 
-void init( void )
-{
+Mesh::Mesh( void ) {
     /* printf(" Generator  of  unstructured  2-D  meshes.\n");
        printf(" (c) Copyright  1993-95.\n");
        printf(" LabNumMath ( INM ).\n");
@@ -38,11 +37,7 @@ void init( void )
     mesh.nRLine = 0;
     mesh.iRLine = 0;
     mesh.nSmooth = 5;
-    strcpy(mesh.outFileName,"");
-    strcpy(mesh.inFileName,"");
-    strcpy(mesh.debFileName,"debug");
 
-    mesh.debug = 1;
     tree.nFace = 0;
 
     initMemory();

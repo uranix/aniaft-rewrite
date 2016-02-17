@@ -2,6 +2,7 @@
 #define H_TRIA_MESH2D
 
 #include "struct.h"
+#include "mesh.h"
 #include "tree.h"
 
 #include <set>
@@ -34,7 +35,7 @@ struct edge {
 
 class Triangulation {
     double minrho,alpha,beta;
-    StrucMesh2 &mesh;
+    Mesh &mesh;
     StrucTree2 &tree;
 
     bool FAF;
@@ -68,7 +69,7 @@ class Triangulation {
     int newTria(int lab);
 
 public:
-    Triangulation(StrucMesh2 &mesh, StrucTree2 &tree, bool FAF) : mesh(mesh), tree(tree), FAF(FAF) { }
+    Triangulation(Mesh &mesh, StrucTree2 &tree, bool FAF) : mesh(mesh), tree(tree), FAF(FAF) { }
 /* error codes:
  *  0 - success
  * -1 - zero sized edge (error in user data)

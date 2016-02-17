@@ -6,7 +6,6 @@
 #include "memory.h"
 #include "aft2d.h"
 
-extern  StrucMesh2  mesh;
 extern  StrucTree2  tree;
 unsigned int _stklen=24000u;
 
@@ -90,7 +89,7 @@ int aft2dfront_(
             brglobal[k*2] = i+1;
             brglobal[k*2+1] = i+2;
             for( j = 0; j < 2; j++) vrbrglobal[i*2+j] = vrbr[i*2+j];
-            if (last>=0 && vrbr[last*2]==vrbr[i*2] && 
+            if (last>=0 && vrbr[last*2]==vrbr[i*2] &&
                     vrbr[last*2+1]==vrbr[i*2+1]) {
                 brglobal[(k-1)*2+1] = last+1;
                 last = -1;
@@ -108,14 +107,14 @@ int aft2dfront_(
     xmax            = vrbrglobal[0];
     ymax            = vrbrglobal[1];
     for( i = 1; i < nVrglobal; i++) {
-        if ( ReferenceCrd[0] > vrbrglobal[i*2+0] ) 
-            ReferenceCrd[0] = vrbrglobal[i*2+0];                    
-        if ( ReferenceCrd[1] > vrbrglobal[i*2+1] ) 
-            ReferenceCrd[1] = vrbrglobal[i*2+1];                    
-        if ( xmax < vrbrglobal[i*2+0] ) 
-            xmax = vrbrglobal[i*2+0];                    
-        if ( ymax < vrbrglobal[i*2+1] ) 
-            ymax = vrbrglobal[i*2+1];                    
+        if ( ReferenceCrd[0] > vrbrglobal[i*2+0] )
+            ReferenceCrd[0] = vrbrglobal[i*2+0];
+        if ( ReferenceCrd[1] > vrbrglobal[i*2+1] )
+            ReferenceCrd[1] = vrbrglobal[i*2+1];
+        if ( xmax < vrbrglobal[i*2+0] )
+            xmax = vrbrglobal[i*2+0];
+        if ( ymax < vrbrglobal[i*2+1] )
+            ymax = vrbrglobal[i*2+1];
     }
     if ( xmax-ReferenceCrd[0] < ymax - ReferenceCrd[1] ) {
         ScalingFactor = 1.0 / ( ymax - ReferenceCrd[1] );
@@ -133,6 +132,7 @@ int aft2dfront_(
     meshnSmoothglobal  = 5;
     StopAfterinitRegion = 0;
 
+    Mesh mesh;
     Triangulation tria(mesh, tree, true);
     err = tria.makeTria();
 
@@ -233,6 +233,7 @@ int aft2dboundary_( int *pnVert, double *bv,
     meshnSmoothglobal = 5;
     StopAfterinitRegion = 0;
 
+    Mesh mesh;
     Triangulation tria(mesh, tree, false);
     err = tria.makeTria();
 

@@ -1,53 +1,40 @@
-#include <stdlib.h>
+#include "mesh.h"
 #include "tree.h"
-#include "region.h"
-#include "refine.h"
 
-#include "tree.h"
-#include "region.h"
-#include "refine.h"
-
+#include <cmath>
 #include <cassert>
 #include <map>
 #include <algorithm>
 
-extern  StrucMesh2  mesh;
-extern  int  boolRegul;
-extern  int  boolFAF;
-
-static void calcNeigTria();
-static void calcNeigbor();
-
-double angle( int v1, int v2, int v ) {
+double Mesh::angle( int v1, int v2, int v ) const {
     double x1,x2,y1,y2,xx,yy;
 
-    x1=mesh.pts[v1].x;
-    y1=mesh.pts[v1].y;
-    x2=mesh.pts[v2].x;
-    y2=mesh.pts[v2].y;
+    x1 = pts[v1].x;
+    y1 = pts[v1].y;
+    x2 = pts[v2].x;
+    y2 = pts[v2].y;
 
-    xx=mesh.pts[v].x;
-    yy=mesh.pts[v].y;
+    xx = pts[v].x;
+    yy = pts[v].y;
 
-    x2-=xx;
-    x1-=xx;
-    y1-=yy;
-    y2-=yy;
+    x2 -= xx;
+    x1 -= xx;
+    y1 -= yy;
+    y2 -= yy;
 
     double p = x1*x2+y1*y2;
     p /= sqrt((x1*x1+y1*y1) * (x2*x2+y2*y2));
 
-    return acos(p);
+    return std::acos(p);
 }
 
-void test_quality()
-{
+void Mesh::test_quality() {
     double da=M_PI/6,min=10.0,max=0.0;
     double min_angle=3.0,max_angle=0.0;
 
     int na[6] = {0, 0, 0, 0, 0, 0};
 
-    for (const auto &tr : mesh.tri) {
+    for (const auto &tr : tri) {
         int p1=tr.v1;
         int p2=tr.v2;
         int p3=tr.v3;
@@ -76,19 +63,19 @@ void test_quality()
             if (a3<min_angle)
                 min_angle=a3;
         }
-        double x1=mesh.pts[p1].x;
-        double y1=mesh.pts[p1].y;
-        double x2=mesh.pts[p2].x;
-        double y2=mesh.pts[p2].y;
-        double x3=mesh.pts[p3].x;
-        double y3=mesh.pts[p3].y;
+        double x1=pts[p1].x;
+        double y1=pts[p1].y;
+        double x2=pts[p2].x;
+        double y2=pts[p2].y;
+        double x3=pts[p3].x;
+        double y3=pts[p3].y;
 
         double xc=0.3333333*(x1+x2+x3);
         double yc=0.3333333*(y1+y2+y3);
 
         double size, pp;
 
-        if (!boolFAF)
+        if (!FAF)
             size=1.0/sizeFace(xc,yc);
         else
             size=3.0/(distance(x1,y1,x2,y2)+distance(x2,y2,x3,y3)+distance(x3,y3,x1,y1));
@@ -113,31 +100,31 @@ void test_quality()
     printf("Max edge = %lf, min edge = %lf\n", max, min);
     printf("Angular info, min = %lf, max = %lf\n", min_angle * 180 / M_PI, max_angle * 180 / M_PI);
     for (int j = 0; j < 6; j++)
-        printf("j = %d nA = %d perc = %lf\n", j, na[j], 100. * na[j] / 3 / mesh.tri.size());
+        printf("j = %d nA = %d perc = %lf\n", j, na[j], 100. * na[j] / 3 / tri.size());
 
     calcNeigTria();
     calcNeigbor();
 
     std::map<size_t, int> n;
-    for (const auto p : mesh.pts)
+    for (const auto p : pts)
         n[p.neib.size()]++;
 
-    printf("Neigbor number for nP = %7lu nT = %7lu\n", mesh.pts.size(), mesh.tri.size());
+    printf("Neigbor number for nP = %7lu nT = %7lu\n", pts.size(), tri.size());
     for (const auto &kv : n) {
         size_t i = kv.first;
         int ni = kv.second;
         printf("neig =%6lu  nPoint =%6d  perc = %lf  perc = %lf\n", i, ni,
-                100. * ni/mesh.pts.size(), 100. * ni/(mesh.pts.size()-n[0]));
+                100. * ni/pts.size(), 100. * ni/(pts.size()-n[0]));
     }
 }
 
-void smoothing() {
-    for (Point &p : mesh.pts) {
+void Mesh::smoothing() {
+    for (Point &p : pts) {
         double xx=0.;
         double yy=0.;
         for (const auto &nei : p.neib) {
-            double x = mesh.pts[nei].x;
-            double y = mesh.pts[nei].y;
+            double x = pts[nei].x;
+            double y = pts[nei].y;
             xx += x;
             yy += y;
         }
@@ -150,35 +137,34 @@ void smoothing() {
     }
 }
 
-void delPoint(int n) {
-    mesh.pts[n].remove = true;
+void Mesh::delPoint(int n) {
+    pts[n].remove = true;
 }
 
-
-void changePoint(int v1, int v2) {
-    mesh.pts[v1].x = 0.5*(mesh.pts[v1].x + mesh.pts[v2].x);
-    mesh.pts[v1].y = 0.5*(mesh.pts[v1].y + mesh.pts[v2].y);
+void Mesh::changePoint(int v1, int v2) {
+    pts[v1].x = 0.5*(pts[v1].x + pts[v2].x);
+    pts[v1].y = 0.5*(pts[v1].y + pts[v2].y);
 }
 
-void delTria(int n) {
-    mesh.tri[n].remove = true;
+void Mesh::delTria(int n) {
+    tri[n].remove = true;
 }
 
-void changeTria(int iTria, int v1, int v2, int v3) {
-    mesh.tri[iTria].v1 = v1;
-    mesh.tri[iTria].v2 = v2;
-    mesh.tri[iTria].v3 = v3;
+void Mesh::changeTria(int iTria, int v1, int v2, int v3) {
+    tri[iTria].v1 = v1;
+    tri[iTria].v2 = v2;
+    tri[iTria].v3 = v3;
 }
 
-void sortNeigbor(int iVert) {
+void Mesh::sortNeigbor(int iVert) {
     std::vector<std::pair<int, double> > na;
 
-    double x0 = mesh.pts[iVert].x;
-    double y0 = mesh.pts[iVert].y;
+    double x0 = pts[iVert].x;
+    double y0 = pts[iVert].y;
 
-    for (const int nei : mesh.pts[iVert].neib) {
-        double x = mesh.pts[nei].x - x0;
-        double y = mesh.pts[nei].y - y0;
+    for (const int nei : pts[iVert].neib) {
+        double x = pts[nei].x - x0;
+        double y = pts[nei].y - y0;
         double p = sqrt(x*x+y*y);
         if (p == 0.)
             p = 1;
@@ -201,39 +187,39 @@ void sortNeigbor(int iVert) {
         }
     );
 
-    std::transform(na.begin(), na.end(), mesh.pts[iVert].neib.begin(),
+    std::transform(na.begin(), na.end(), pts[iVert].neib.begin(),
             [] (const std::pair<int, double> &v) { return v.first; });
 }
 
-void calcNeigTria() {
-    for (Point &p : mesh.pts) {
+void Mesh::calcNeigTria() {
+    for (Point &p : pts) {
         p.neibTria.clear();
         p.alreadySwapped = false;
     }
     int i = 0;
-    for (const auto tr : mesh.tri) {
-        mesh.pts[tr.v1].neibTria.push_back(i);
-        mesh.pts[tr.v2].neibTria.push_back(i);
-        mesh.pts[tr.v3].neibTria.push_back(i);
+    for (const auto tr : tri) {
+        pts[tr.v1].neibTria.push_back(i);
+        pts[tr.v2].neibTria.push_back(i);
+        pts[tr.v3].neibTria.push_back(i);
         i++;
     }
 }
 
-void calcNeigbor() {
+void Mesh::calcNeigbor() {
     std::vector<int> vert;
 
-    for (Point &p : mesh.pts) {
+    for (Point &p : pts) {
         if (!p.skip_neib)
             p.neib.clear();
     }
 
-    for (int i = 0; i < (int)mesh.pts.size(); i++) {
-        Point &p = mesh.pts[i];
+    for (int i = 0; i < (int)pts.size(); i++) {
+        Point &p = pts[i];
         if (p.skip_neib)
             continue;
         vert.clear();
         for (const int itr : p.neibTria) {
-            const Triangle &tr = mesh.tri[itr];
+            const Triangle &tr = tri[itr];
             vert.push_back(tr.v1);
             vert.push_back(tr.v2);
             vert.push_back(tr.v3);
@@ -253,33 +239,33 @@ void calcNeigbor() {
     }
 }
 
-void calcEdge() {
-    for(int i = 0; i < (int)mesh.pts.size(); i++) {
-        Point &p = mesh.pts[i];
+void Mesh::calcEdge() {
+    for(int i = 0; i < (int)pts.size(); i++) {
+        Point &p = pts[i];
         if (p.skip_neib)
             continue;
         for (const int vert : p.neib) {
             if (vert <= i)
                 continue;
-            if (mesh.pts[vert].skip_neib)
+            if (pts[vert].skip_neib)
                 continue;
 
-            mesh.vb.push_back(i);
-            mesh.ve.push_back(vert);
+            vb.push_back(i);
+            ve.push_back(vert);
             bool swap = true;
             for (size_t itr : p.neibTria) {
-                const Triangle &tr = mesh.tri[itr];
+                const Triangle &tr = tri[itr];
                 if (tr.v1 == vert || tr.v2 == vert || tr.v3 == vert) {
                     if (swap) {
-                        mesh.tria1.push_back(itr);
+                        tria1.push_back(itr);
                         swap = false;
                     } else
-                        mesh.tria2.push_back(itr);
+                        tria2.push_back(itr);
                 }
             }
             swap = true;
-            int itr = mesh.tria1.back();
-            const Triangle &tr = mesh.tri[itr];
+            int itr = tria1.back();
+            const Triangle &tr = tri[itr];
             if (tr.v1 == i && tr.v2 == vert)
                 swap = false;
             else if (tr.v2 == i && tr.v3 == vert)
@@ -287,13 +273,9 @@ void calcEdge() {
             else if (tr.v3 == i && tr.v1 == vert)
                 swap = false;
             if (swap)
-                std::swap(mesh.tria1.back(), mesh.tria2.back());
+                std::swap(tria1.back(), tria2.back());
         }
     }
-}
-
-void initRegularity() {
-    calcNeigTria();
 }
 
 template<class Cont, class Pred>
@@ -301,13 +283,13 @@ void drop(Cont &cont, Pred pred) {
     cont.erase(std::remove_if(cont.begin(), cont.end(), pred), cont.end());
 }
 
-void pack() {
-    drop(mesh.tri, [] (const Triangle &t) { return t.remove; });
+void Mesh::pack() {
+    drop(tri, [] (const Triangle &t) { return t.remove; });
 
     std::vector<int> newidx;
 
     int idx = 0;
-    for (const Point &p : mesh.pts) {
+    for (const Point &p : pts) {
         if (p.remove)
             newidx.push_back(-1);
         else {
@@ -316,20 +298,20 @@ void pack() {
         }
     }
 
-    for (auto &tr : mesh.tri) {
+    for (auto &tr : tri) {
         tr.v1 = newidx[tr.v1];
         tr.v2 = newidx[tr.v2];
         tr.v3 = newidx[tr.v3];
         assert(tr.v1 >= 0 && tr.v2 >= 0 && tr.v3 >= 0);
     }
 
-    drop(mesh.pts, [] (const Point &p) { return p.remove; });
+    drop(pts, [] (const Point &p) { return p.remove; });
 }
 
 // Deletes points with 3 or 4 neighbors
-void deletePoint() {
-    for(int i = 0; i < (int)mesh.pts.size(); i++) {
-        Point &p = mesh.pts[i];
+void Mesh::deletePoint() {
+    for(int i = 0; i < (int)pts.size(); i++) {
+        Point &p = pts[i];
         int j = p.neib.size();
         if (j == 3) {
             delPoint(i);
@@ -341,10 +323,10 @@ void deletePoint() {
         else if( j == 4 ){
             delPoint(i);
             sortNeigbor(i);
-            int n1 = mesh.pts[p.neib[0]].neib.size() - 7;
-            int n2 = mesh.pts[p.neib[1]].neib.size() - 7;
-            int n3 = mesh.pts[p.neib[2]].neib.size() - 7;
-            int n4 = mesh.pts[p.neib[3]].neib.size() - 7;
+            int n1 = pts[p.neib[0]].neib.size() - 7;
+            int n2 = pts[p.neib[1]].neib.size() - 7;
+            int n3 = pts[p.neib[2]].neib.size() - 7;
+            int n4 = pts[p.neib[3]].neib.size() - 7;
             int sum  = (n1+1)*(n1+1) + (n3+1)*(n3+1) + n2*n2 + n4*n4;
             int swap = (n2+1)*(n2+1) + (n4+1)*(n4+1) + n1*n1 + n3*n3;
             /*printf("swap %4d%4d n(%4d%4d%4d%4d) \n",sum,swap,n1,n3,n2,n4);*/
@@ -365,21 +347,21 @@ void deletePoint() {
 }
 
 // Merges two points with 5 neibs
-void mergePoint() {
+void Mesh::mergePoint() {
     calcEdge();
-    for(size_t i = 0; i < mesh.vb.size(); i++){
-        int v1 = mesh.vb[i];
-        int v2 = mesh.ve[i];
-        int n1 = mesh.pts[v1].neib.size();
-        int n2 = mesh.pts[v2].neib.size();
+    for(size_t i = 0; i < vb.size(); i++){
+        int v1 = vb[i];
+        int v2 = ve[i];
+        int n1 = pts[v1].neib.size();
+        int n2 = pts[v2].neib.size();
         if( n1 == 5 && n2 == 5 ){
             // Dont merge futher these points
-            mesh.pts[v1].neib.push_back(-1);
-            mesh.pts[v2].neib.push_back(-1);
+            pts[v1].neib.push_back(-1);
+            pts[v2].neib.push_back(-1);
             changePoint(v1, v2);
             delPoint(v2);
-            for (const int itr : mesh.pts[v2].neibTria) {
-                Triangle &tr = mesh.tri[itr];
+            for (const int itr : pts[v2].neibTria) {
+                Triangle &tr = tri[itr];
                 if( tr.v1 == v2 )
                     tr.v1 = v1;
                 if( tr.v2 == v2 )
@@ -387,8 +369,8 @@ void mergePoint() {
                 if( tr.v3 == v2 )
                     tr.v3 = v1;
             }
-            delTria(mesh.tria1[i]);
-            delTria(mesh.tria2[i]);
+            delTria(tria1[i]);
+            delTria(tria2[i]);
         }
     }
 
@@ -398,9 +380,9 @@ void mergePoint() {
 }
 
 // splits points with more than 7 neibs
-void splitPoint() {
-    for (int i = 0; i < (int)mesh.pts.size(); i++){
-        Point &p = mesh.pts[i];
+void Mesh::splitPoint() {
+    for (int i = 0; i < (int)pts.size(); i++){
+        Point &p = pts[i];
         int n1 = p.neib.size();
         if( n1 <= 7 )
             continue;
@@ -410,21 +392,21 @@ void splitPoint() {
 
         double size;
 
-        if (!boolFAF)
+        if (!FAF)
             size = sizeFace(p.x, p.y);
         else {
-            const Point &p2 = mesh.pts[p.neib[n2]];
+            const Point &p2 = pts[p.neib[n2]];
             size = distance(p.x, p.y, p2.x, p2.y);
         }
 
         addPoint(p.x+0.1*size, p.y);
-        Point &pv = mesh.pts.back();
-        int vert = mesh.pts.size() - 1;
+        Point &pv = pts.back();
+        int vert = pts.size() - 1;
 
         pv.neib.push_back(-1);
 
         for (const int nei : p.neib) {
-            Point &pn = mesh.pts[nei];
+            Point &pn = pts[nei];
             if (!pn.skip_neib) {
                 pn.neib.clear();
                 pn.neib.push_back(-1);
@@ -433,7 +415,7 @@ void splitPoint() {
 
         int lab = -1;
         for(int j = 0; j < n1 - 1; j++) {
-            Triangle &tr = mesh.tri[p.neibTria[j]];
+            Triangle &tr = tri[p.neibTria[j]];
             if (lab == -1)
                 lab = tr.label;
 
@@ -442,14 +424,14 @@ void splitPoint() {
             changeTria(p.neibTria[j], p.neib[j+1], p.neib[j], i);
         }
         for(int j = n1; j < n1 + n2 - 1; j++) {
-            Triangle &tr = mesh.tri[p.neibTria[j]];
+            Triangle &tr = tri[p.neibTria[j]];
             if (lab != tr.label)
                 fprintf(stderr, "aniAFT: different materials inside region\n");
             changeTria(p.neibTria[j], p.neib[j+1], p.neib[j], vert);
         }
         {
             int it = p.neibTria[n1 - 1];
-            Triangle &tr = mesh.tri[it];
+            Triangle &tr = tri[it];
             if (lab != tr.label)
                 fprintf(stderr, "aniAFT: different materials inside region\n");
 
@@ -457,7 +439,7 @@ void splitPoint() {
         }
         {
             int it = p.neibTria[n1 + n2 - 1];
-            Triangle &tr = mesh.tri[it];
+            Triangle &tr = tri[it];
             if (lab != tr.label)
                 fprintf(stderr, "aniAFT: different materials inside region\n");
             changeTria(it, p.neib[n1], p.neib[n1-1], vert);
@@ -473,16 +455,16 @@ void splitPoint() {
         smoothing();
 }
 
-void swapEdge() {
+void Mesh::swapEdge() {
     calcEdge();
-    for(size_t i = 0; i < mesh.vb.size(); i++) {
-        int vb = mesh.vb[i];
-        int ve = mesh.ve[i];
-        int tria1 = mesh.tria1[i];
-        int tria2 = mesh.tria2[i];
+    for(size_t i = 0; i < vb.size(); i++) {
+        int vb = this->vb[i];
+        int ve = this->ve[i];
+        int tria1 = this->tria1[i];
+        int tria2 = this->tria2[i];
 
-        const Triangle &tr1 = mesh.tri[tria1];
-        const Triangle &tr2 = mesh.tri[tria2];
+        const Triangle &tr1 = tri[tria1];
+        const Triangle &tr2 = tri[tria2];
 
         // v1 = tr1.v1 ^ tr1.v2 ^ tr1.v3 ^ vb ^ ve
         int v1 = tr1.v1;
@@ -500,28 +482,28 @@ void swapEdge() {
                 v2 = tr2.v3;
         }
 
-        if (mesh.pts[v1].skip_neib || mesh.pts[v2].skip_neib)
+        if (pts[v1].skip_neib || pts[v2].skip_neib)
             continue;
-        if (mesh.pts[vb].alreadySwapped && mesh.pts[ve].alreadySwapped)
+        if (pts[vb].alreadySwapped && pts[ve].alreadySwapped)
             continue;
-        int nb = mesh.pts[vb].neib.size() - 6;
-        int ne = mesh.pts[ve].neib.size() - 6;
-        int n1 = mesh.pts[v1].neib.size() - 6;
-        int n2 = mesh.pts[v2].neib.size() - 6;
+        int nb = pts[vb].neib.size() - 6;
+        int ne = pts[ve].neib.size() - 6;
+        int n1 = pts[v1].neib.size() - 6;
+        int n2 = pts[v2].neib.size() - 6;
         if (nb < 1 && ne < 1 && n1 < 1 && n2 < 1)
             continue;
         int sum = nb*nb + ne*ne + n1*n1 + n2*n2;
         int swap = (nb-1)*(nb-1) + (ne-1)*(ne-1) + (n1+1)*(n1+1) + (n2+1)*(n2+1);
         /*printf("swap %4d%4d v(%4d%4d%4d%4d) n(%4d%4d%4d%4d) \n",sum,swap,vb,ve,v1,v2,nb,ne,n1,n2);*/
         if (swap < sum) {
-            mesh.pts[vb].neib.pop_back();
-            mesh.pts[ve].neib.pop_back();
-            mesh.pts[v1].neib.push_back(-1);
-            mesh.pts[v2].neib.push_back(-1);
-            mesh.pts[vb].alreadySwapped = true;
-            mesh.pts[ve].alreadySwapped = true;
-            mesh.pts[v1].alreadySwapped = true;
-            mesh.pts[v2].alreadySwapped = true;
+            pts[vb].neib.pop_back();
+            pts[ve].neib.pop_back();
+            pts[v1].neib.push_back(-1);
+            pts[v2].neib.push_back(-1);
+            pts[vb].alreadySwapped = true;
+            pts[ve].alreadySwapped = true;
+            pts[v1].alreadySwapped = true;
+            pts[v2].alreadySwapped = true;
             changeTria(tria1, v2, v1, vb);
             changeTria(tria2, v1, v2, ve);
         }
@@ -529,41 +511,39 @@ void swapEdge() {
 
     calcNeigTria();
     calcNeigbor();
-}/*swapEdge*/
+}
 
+void Mesh::regularity(bool Regul) {
+    int i;
 
-void regularity()
-{
-    int  i;
+    if (Regul) {
+        calcNeigTria();
+        calcNeigbor();
 
-    if( boolRegul ){
-
-        initRegularity();
         for(i=0;i<5;i++)
             smoothing();
-        /*test_quality();
-          getch();*/
+
+        test_quality();
 
         deletePoint();
         for(i=0;i<5;i++)
             smoothing();
-        /*test_quality();
-          getch();*/
+
+        test_quality();
 
         mergePoint();
         mergePoint();
         mergePoint();
         for(i=0;i<5;i++)
             smoothing();
-        /*test_quality();
-          getch();*/
+        test_quality();
 
         splitPoint();
         splitPoint();
         splitPoint();
-        /*test_quality();
-          printf("SWAP:\n");
-          getch();*/
+
+        test_quality();
+        printf("SWAP:\n");
 
         swapEdge();
         for(i=0;i<5;i++)
@@ -576,13 +556,9 @@ void regularity()
             smoothing();
         swapEdge();
 
-        /*test_quality();
-          getch();*/
+        test_quality();
+    }
 
-    }/*if( boolRegul )*/
-
-    for(i=0;i<mesh.nSmooth;i++)
+    for(i=0;i<nSmooth;i++)
         smoothing();
-
-    return;
 }/*regularity*/

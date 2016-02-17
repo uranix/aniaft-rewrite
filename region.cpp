@@ -6,6 +6,8 @@
 #include "tree.h"
 
 
+#define MAX_POINT 50000
+
 extern  StrucMesh2  mesh;
 extern  int         boolDraft;
 
