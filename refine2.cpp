@@ -194,8 +194,10 @@ void sortNeigbor(int iVert) {
 }
 
 void calcNeigTria() {
-    for (Point &p : mesh.pts)
+    for (Point &p : mesh.pts) {
         p.neibTria.clear();
+        p.alreadySwapped = false;
+    }
     int i = 0;
     for (const auto tr : mesh.tri) {
         mesh.pts[tr.v1].neibTria.push_back(i);
@@ -348,8 +350,6 @@ void deletePoint() {
     pack();
     calcNeigTria();
     calcNeigbor();
-
-    return;
 }
 
 // Merges two points with 5 neibs
@@ -385,8 +385,9 @@ void mergePoint() {
     calcNeigbor();
 }
 
+// splits points with more than 7 neibs
 void splitPoint() {
-    for (int i=0; i < (int)mesh.pts.size(); i++){
+    for (int i = 0; i < (int)mesh.pts.size(); i++){
         Point &p = mesh.pts[i];
         int n1 = p.neib.size();
         if( n1 <= 7 )
@@ -404,107 +405,118 @@ void splitPoint() {
             size = distance(p.x, p.y, p2.x, p2.y);
         }
 
-        vert = mesh.nPoint;
-        mesh.neigbor[0][vert] = 1;
-        addPoint(mesh.x[i]+0.1*size,mesh.y[i]);
+        addPoint(p.x+0.1*size, p.y);
+        Point &pv = mesh.pts.back();
+        int vert = mesh.pts.size() - 1;
 
-        for(j=1;j<=n1+n2;j++){
-            if( mesh.neigbor[0][ mesh.neigbor[j][i] ] != -1 )
-                mesh.neigbor[0][ mesh.neigbor[j][i] ] = 1;
+        pv.neib.push_back(-1);
+
+        for (const int nei : p.neib) {
+            Point &pn = mesh.pts[nei];
+            if (!pn.skip_neib) {
+                pn.neib.clear();
+                pn.neib.push_back(-1);
+            }
         }
-        lab=-1;
-        for(j=1;j<n1;j++){
-            it=mesh.neigTria[j][i]; if (lab==-1) lab=mesh.label[it];
-            if (lab != mesh.label[it])  fprintf(stderr, "aniAFT: different materials inside region\n");
-            changeTria(mesh.neigTria[j][i],
-                    mesh.neigbor[j+1][i],mesh.neigbor[j][i],i);
+
+        int lab = -1;
+        for(int j = 0; j < n1 - 1; j++) {
+            Triangle &tr = mesh.tri[p.neibTria[j]];
+            if (lab == -1)
+                lab = tr.label;
+
+            if (lab != tr.label)
+                fprintf(stderr, "aniAFT: different materials inside region\n");
+            changeTria(p.neibTria[j], p.neib[j+1], p.neib[j], i);
         }
-        for(j=n1+1;j<n1+n2;j++){
-            it=mesh.neigTria[j][i]; if (lab==-1) lab=mesh.label[it]; 
-            if (lab != mesh.label[it])  fprintf(stderr, "aniAFT: different materials inside region\n");
-            changeTria(mesh.neigTria[j][i],
-                    mesh.neigbor[j+1][i],mesh.neigbor[j][i],vert);
+        for(int j = n1; j < n1 + n2 - 1; j++) {
+            Triangle &tr = mesh.tri[p.neibTria[j]];
+            if (lab != tr.label)
+                fprintf(stderr, "aniAFT: different materials inside region\n");
+            changeTria(p.neibTria[j], p.neib[j+1], p.neib[j], vert);
         }
-        it=mesh.neigTria[n1][i]; if (lab==-1) lab=mesh.label[it]; 
-        if (lab != mesh.label[it])  fprintf(stderr, "aniAFT: different materials inside region\n");
-        changeTria(mesh.neigTria[n1][i],
-                mesh.neigbor[n1][i],i,vert);
-        it=mesh.neigTria[n1+n2][i]; if (lab==-1) lab=mesh.label[it]; 
-        if (lab != mesh.label[it])  fprintf(stderr, "aniAFT: different materials inside region\n");
-        changeTria(mesh.neigTria[n1+n2][i],
-                mesh.neigbor[n1+1][i],mesh.neigbor[n1][i],vert);
-        addTria(mesh.neigbor[n1+n2][i],vert,i,lab);
-        addTria(mesh.neigbor[n1+n2][i],i,mesh.neigbor[1][i],lab);
+        {
+            int it = p.neibTria[n1 - 1];
+            Triangle &tr = mesh.tri[it];
+            if (lab != tr.label)
+                fprintf(stderr, "aniAFT: different materials inside region\n");
+
+            changeTria(it, p.neib[n1-1], i, vert);
+        }
+        {
+            int it = p.neibTria[n1 + n2 - 1];
+            Triangle &tr = mesh.tri[it];
+            if (lab != tr.label)
+                fprintf(stderr, "aniAFT: different materials inside region\n");
+            changeTria(it, p.neib[n1], p.neib[n1-1], vert);
+        }
+        addTria(p.neib[n1+n2-1], vert, i, lab);
+        addTria(p.neib[n1+n2-1], i, p.neib[0],lab);
     }
-    /*   pack();*/
+    /* pack(); */
     calcNeigTria();
     calcNeigbor();
-    for(i=0;i<5;i++)
+
+    for(int i=0; i<5; i++)
         smoothing();
+}
 
-    return;
-}/*splitPoint*/
-
-
-void swapEdge()
-{
-    int  i,vb,ve,v1,v2,nb,ne,n1,n2,tria1,tria2,sum,swap;
-
+void swapEdge() {
     calcEdge();
-    for(i=0;i<mesh.nEdge;i++){
-        vb = mesh.vb[i];
-        ve = mesh.ve[i];
-        tria1 = mesh.tria1[i];
-        tria2 = mesh.tria2[i];
-        v1 = mesh.v1[tria1];
-        if( v1 == vb || v1 == ve ){
-            v1 = mesh.v2[tria1];
-            if( v1 == vb || v1 == ve ){
-                v1 = mesh.v3[tria1];
-            }
+    for(size_t i = 0; i < mesh.vb.size(); i++) {
+        int vb = mesh.vb[i];
+        int ve = mesh.ve[i];
+        int tria1 = mesh.tria1[i];
+        int tria2 = mesh.tria2[i];
+
+        const Triangle &tr1 = mesh.tri[tria1];
+        const Triangle &tr2 = mesh.tri[tria2];
+
+        // v1 = tr1.v1 ^ tr1.v2 ^ tr1.v3 ^ vb ^ ve
+        int v1 = tr1.v1;
+        if (v1 == vb || v1 == ve) {
+            v1 = tr1.v2;
+            if (v1 == vb || v1 == ve)
+                v1 = tr1.v3;
         }
-        v2 = mesh.v1[tria2];
-        if( v2 == vb || v2 == ve ){
-            v2 = mesh.v2[tria2];
-            if( v2 == vb || v2 == ve ){
-                v2 = mesh.v3[tria2];
-            }
+
+        // v2 = tr2.v1 ^ tr2.v2 ^ tr2.v3 ^ vb ^ ve
+        int v2 = tr2.v1;
+        if (v2 == vb || v2 == ve) {
+            v2 = tr2.v2;
+            if (v2 == vb || v2 == ve)
+                v2 = tr2.v3;
         }
-        if( mesh.neigbor[0][v1] == -1 || mesh.neigbor[0][v2] == -1 )
+
+        if (mesh.pts[v1].skip_neib || mesh.pts[v2].skip_neib)
             continue;
-        if( mesh.neigTria[0][vb] == -1 && mesh.neigTria[0][ve] == -1 )
+        if (mesh.pts[vb].alreadySwapped && mesh.pts[ve].alreadySwapped)
             continue;
-        nb = mesh.neigbor[0][vb] - 6;
-        ne = mesh.neigbor[0][ve] - 6;
-        n1 = mesh.neigbor[0][v1] - 6;
-        n2 = mesh.neigbor[0][v2] - 6;
-        if( nb < 1 && ne < 1 && n1 < 1 && n2 < 1 )
+        int nb = mesh.pts[vb].neib.size() - 6;
+        int ne = mesh.pts[ve].neib.size() - 6;
+        int n1 = mesh.pts[v1].neib.size() - 6;
+        int n2 = mesh.pts[v2].neib.size() - 6;
+        if (nb < 1 && ne < 1 && n1 < 1 && n2 < 1)
             continue;
-        sum = nb*nb + ne*ne + n1*n1 + n2*n2;
-        swap = (nb-1)*(nb-1) + (ne-1)*(ne-1) + (n1+1)*(n1+1) + (n2+1)*(n2+1);
+        int sum = nb*nb + ne*ne + n1*n1 + n2*n2;
+        int swap = (nb-1)*(nb-1) + (ne-1)*(ne-1) + (n1+1)*(n1+1) + (n2+1)*(n2+1);
         /*printf("swap %4d%4d v(%4d%4d%4d%4d) n(%4d%4d%4d%4d) \n",sum,swap,vb,ve,v1,v2,nb,ne,n1,n2);*/
-        if( swap < sum ){
-            mesh.neigbor[0][vb] = nb + 5;
-            mesh.neigbor[0][ve] = ne + 5;
-            mesh.neigbor[0][v1] = n1 + 7;
-            mesh.neigbor[0][v2] = n2 + 7;
-            mesh.neigTria[0][vb] = -1;
-            mesh.neigTria[0][ve] = -1;
-            mesh.neigTria[0][v1] = -1;
-            mesh.neigTria[0][v2] = -1;
-            changeTria(tria1,v2,v1,vb);
-            changeTria(tria2,v1,v2,ve);
+        if (swap < sum) {
+            mesh.pts[vb].neib.pop_back();
+            mesh.pts[ve].neib.pop_back();
+            mesh.pts[v1].neib.push_back(-1);
+            mesh.pts[v2].neib.push_back(-1);
+            mesh.pts[vb].alreadySwapped = true;
+            mesh.pts[ve].alreadySwapped = true;
+            mesh.pts[v1].alreadySwapped = true;
+            mesh.pts[v2].alreadySwapped = true;
+            changeTria(tria1, v2, v1, vb);
+            changeTria(tria2, v1, v2, ve);
         }
     }
-    free(mesh.vb);
-    free(mesh.ve);
-    free(mesh.tria1);
-    free(mesh.tria2);
 
     calcNeigTria();
     calcNeigbor();
-
-    return;
 }/*swapEdge*/
 
 

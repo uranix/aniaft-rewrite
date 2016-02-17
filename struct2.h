@@ -7,10 +7,11 @@ struct Point {
     double x, y;
     bool remove;
     bool skip_neib;
+    bool alreadySwapped;
     std::vector<int> neib;
     std::vector<int> neibTria;
-    Point(double x, double y) : x(x), y(y), remove(false) { }
-    Point() : remove(false) { }
+    Point(double x, double y) : x(x), y(y), remove(false), skip_neib(false), alreadySwapped(false) { }
+    Point() : remove(false), skip_neib(false), alreadySwapped(false) { }
     void move(double xx, double yy) { x = xx; y = yy; }
 };
 
