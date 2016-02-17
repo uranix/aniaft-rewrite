@@ -1,4 +1,3 @@
-//#include<malloc.h>  // deprecated on Mac OSX?
 #include <stdlib.h>
 #include <math.h>
 
@@ -28,13 +27,9 @@ extern double *vrtglobal;
 
 extern  int StopAfterinitRegion;
 
-
-
-
 int     nLine;
 /*int     boolFAF=0;*/
 int         boolFAF;
-
 
 void makeLineAdvancedFront(int *boundVert, double *par_t, int nVert, int bNum,
         int bCond, int bCurve, int region,int bCut );
@@ -53,17 +48,13 @@ void boundary0(double t, double *x, double *y)
 {
     x[0] = xBegin + (xEnd-xBegin)*t;
     y[0] = yBegin + (yEnd-yBegin)*t;
-
-    return;
 }/*boundary0*/
-
 
 void boundary(int n, double t, double *x, double *y)
 {
     if(n == 0) {
         boundary0(t,x,y);
-    } 
-    else {
+    } else {
         (* userfn) (&n, &t, x, y);
         x[0] = (x[0] - ReferenceCrd[0]) * ScalingFactor;
         y[0] = (y[0] - ReferenceCrd[1]) * ScalingFactor;
@@ -111,7 +102,8 @@ void smoothingBoundary( int *vert, double *parameter, int iBound, int n)
     /*******************************
       n - number  of  vert  in  line  of boundary  including  two  v-vert
      *********************************/
-{  int    i,j=0;
+{
+    int    i,j=0;
     double t,tp,tn,sp,sn,x,y;
     int    v,vp,vn;
 
@@ -120,13 +112,19 @@ void smoothingBoundary( int *vert, double *parameter, int iBound, int n)
             v  = vert[i];
             vp = vert[i-1];  tp = parameter[i-1];
             vn = vert[i+1];  tn = parameter[i+1];
-            sp = sizeFace( 0.5*(mesh.x[v]+mesh.x[vp]) , 0.5*(mesh.y[v]+mesh.y[vp]) );
-            sn = sizeFace( 0.5*(mesh.x[v]+mesh.x[vn]) , 0.5*(mesh.y[v]+mesh.y[vn]) );
-            t = tp+(tn-tp)*sp/(sp+sn);
+
+            Point &p = mesh.pts[v];
+
+            const Point &pp = mesh.pts[vp];
+            const Point &pn = mesh.pts[vn];
+
+            sp = sizeFace(0.5*(p.x + pp.x), 0.5*(p.y + pp.y));
+            sn = sizeFace(0.5*(p.x + pn.x), 0.5*(p.y + pn.y));
+            t = tp + (tn - tp) * sp / (sp+sn);
             parameter[i] = t;
             boundary(iBound,t,&x,&y);
-            mesh.x[v] = x;
-            mesh.y[v] = y;
+
+            p.move(x, y);
         }
         j++;
     }
@@ -142,38 +140,34 @@ extern double *vrbrglobal;
 
 void initFAFRegion( void )
 {
-    int       i,j,k,v1,v2,nVert;
     long      p;
-    double    x,y,s=0.;
-    int 		 *ind;
+    double    s=0.;
 
     if( mesh.nRegion == 0 )
         mesh.nRegion = 1;
     /* init memory for mesh.nRLine */
     p = (unsigned long)mesh.nRegion*sizeof(int);
     mesh.nRPoint = (int *)malloc(p);
-    if( mesh.nRPoint == NULL )  perror("aniAFT");
+    if (mesh.nRPoint == NULL)
+        perror("aniAFT");
     mesh.nRTria = (int *)malloc(p);
-    if( mesh.nRTria == NULL )  perror("aniAFT");
+    if (mesh.nRTria == NULL)
+        perror("aniAFT");
 
-    nVert = nVrglobal;
-    ind = (int *)malloc(sizeof(int)*(nVert+1));
-    k=0;
-    for (i=0;i<nVert;i++){
-//        mesh.neigbor[0][mesh.nPoint] = -1;
-        mesh.skip_neib[mesh.nPoint] = true;
-        x = vrbrglobal[i*2];
-        y = vrbrglobal[i*2+1];
+    int nVert = nVrglobal;
+    std::vector<int> ind(nVert + 1);
+    int k=0;
+    for (int i=0; i<nVert; i++){
+        double x = vrbrglobal[i*2];
+        double y = vrbrglobal[i*2+1];
         ind[i+1] = k+1;
-        for (j=0;j<mesh.nPoint;j++)
-            if (x==mesh.x[j] && y==mesh.y[j]) {
+        for (size_t j=0; j<mesh.pts.size(); j++)
+            if (x==mesh.pts[j].x && y==mesh.pts[j].y) {
                 ind[i+1] = j+1;
                 break;
             }
         if (ind[i+1] == k+1) {
-            mesh.x[mesh.nPoint] = x;
-            mesh.y[mesh.nPoint] = y;
-            mesh.nPoint++;
+            mesh.pts.push_back(Point(x, y, true));
             k++;
         }
     }
@@ -181,9 +175,9 @@ void initFAFRegion( void )
     nBNDglobal = nBrglobal;
     bndglobal = (int*) malloc(sizeof(int)*(5*nBNDglobal));
 
-    for (i=0;i<nVert;i++){
-        v1 = ind[brglobal[i*2]];
-        v2 = ind[brglobal[i*2+1]];
+    for (int i=0; i<nVert; i++){
+        int v1 = ind[brglobal[i*2]];
+        int v2 = ind[brglobal[i*2+1]];
         bndglobal[5*i+0] = v1;
         bndglobal[5*i+1] = v2;
         bndglobal[5*i+2] = 0;
@@ -192,30 +186,28 @@ void initFAFRegion( void )
         v1--;  v2--;
         if (v1!=v2) {
             (void)addFace(v1,v2,0);
-            s+=(mesh.y[v1]*mesh.x[v2]-mesh.y[v2]*mesh.x[v1]);
+            const Point &p1 = mesh.pts[v1];
+            const Point &p2 = mesh.pts[v2];
+            s += (p1.y * p2.x - p2.y * p1.x);
         }
-    }/* for i */
+    }
     if (s<0) {
         printf("\nWarning: wrong orientation of boundary edges!\n\n");
     }
-    free(ind);
 
     nCRVglobal = 0;
     crvglobal = (double*) malloc(sizeof(double)*(2*nCRVglobal));
     iFNCglobal= (int*) malloc(sizeof(int)*(nCRVglobal));
 
-    if ( StopAfterinitRegion != 0 ) {
-        nVRTglobal = mesh.nPoint;;
+    if (StopAfterinitRegion != 0) {
+        nVRTglobal = mesh.pts.size();
         vrtglobal = (double*) malloc(sizeof(double)*(2*nBnd));
-        for(i=0;i<mesh.nPoint;i++){
-            vrtglobal[2*i] = mesh.x[i];
-            vrtglobal[2*i+1] =  mesh.y[i];
+        for (size_t i = 0; i < mesh.pts.size(); i++) {
+            vrtglobal[2*i]   = mesh.pts[i].x;
+            vrtglobal[2*i+1] = mesh.pts[i].y;
         }
     }
-    return;
-}/*initFAFRegion*/
-
-
+}
 
 extern double *bvglobal;
 extern double *bltailglobal;
@@ -247,11 +239,8 @@ void initLineRegion( void )
     for (i=0;i<nVVert;i++){
         x = bvglobal[i*2];
         y = bvglobal[i*2+1];
-//        mesh.neigbor[0][mesh.nPoint] = -1;
-        mesh.skip_neib[mesh.nPoint] = true;
-        mesh.x[mesh.nPoint] = x;
-        mesh.y[mesh.nPoint] = y;
-        vVert[i] = mesh.nPoint++;
+        mesh.pts.push_back(Point(x, y, true));
+        vVert[i] = mesh.pts.size() - 1;
     }
     nLine = nLineglobal;
 
@@ -276,11 +265,9 @@ void initLineRegion( void )
             y = bltailglobal[i*2+1];
             tBegin = x;   tEnd = y;
             boundary(bNum,tBegin,&x,&y);
-            mesh.x[vVert[vBegin]] = x;
-            mesh.y[vVert[vBegin]] = y;
+            mesh.pts[vVert[vBegin]].move(x, y);
             boundary(bNum,tEnd,&x,&y);
-            mesh.x[vVert[vEnd]] = x;
-            mesh.y[vVert[vEnd]] = y;
+            mesh.pts[vVert[vEnd]].move(x, y);
         }
     }/* for i */
     if( mesh.nRegion == 0 )
@@ -317,10 +304,10 @@ void initLineRegion( void )
         bCut   = blglobal[i*7+6];
 
         vBegin--;  vEnd--;
-        xBegin = mesh.x[vVert[vBegin]];
-        xEnd   = mesh.x[vVert[vEnd]];
-        yBegin = mesh.y[vVert[vBegin]];
-        yEnd   = mesh.y[vVert[vEnd]];
+        xBegin = mesh.pts[vVert[vBegin]].x;
+        xEnd   = mesh.pts[vVert[vEnd]]  .x;
+        yBegin = mesh.pts[vVert[vBegin]].y;
+        yEnd   = mesh.pts[vVert[vEnd]]  .y;
         if( bNum > 0 ){
             x = bltailglobal[i*2];
             y = bltailglobal[i*2+1];
@@ -334,21 +321,18 @@ void initLineRegion( void )
         par_t[nVert] = tBegin;
         boundVert[nVert++] = vVert[vBegin];
         t = tBegin;
-        for(j=0;;j++){
-            if( nVert >= MAX_POINT ) {
+        for (j=0;;j++){
+            if (nVert >= MAX_POINT) {
                 fprintf(stderr, "aniAFT: line: max point\n");
                 break;
             }
             t = nextT(bNum,t);
             if( t < 0. )
                 break;
-//            mesh.neigbor[0][mesh.nPoint] = -1;
-            mesh.skip_neib[mesh.nPoint] = true;
             boundary(bNum,t,&x,&y);
-            mesh.x[mesh.nPoint] = x;
-            mesh.y[mesh.nPoint] = y;
+            mesh.pts.push_back(Point(x, y, true));
             par_t[nVert] = t;
-            boundVert[nVert++] = mesh.nPoint++;
+            boundVert[nVert++] = mesh.pts.size() - 1;
         }/* for(bool;;) */
         par_t[nVert] = tEnd;
         boundVert[nVert++] = vVert[vEnd];
@@ -488,8 +472,8 @@ void outBoundary( char *outFileName )
         nVRTglobal = nBnd;
         vrtglobal = (double*) malloc(sizeof(double)*(2*nBnd));
         for(i=0;i<nBnd;i++){
-            vrtglobal[2*i] = mesh.x[i];
-            vrtglobal[2*i+1] =  mesh.y[i];
+            vrtglobal[2*i]   = mesh.pts[i].x;
+            vrtglobal[2*i+1] = mesh.pts[i].y;
         }
     }
 

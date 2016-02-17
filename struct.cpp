@@ -34,7 +34,6 @@ void init( void )
        printf(" LabNumMath ( INM ).\n");
        printf(" Version July, 18, 1995.\n");
        */
-    mesh.nPoint = 0;
     mesh.nRegion = 1;
     mesh.nRLine = 0;
     mesh.iRLine = 0;
@@ -72,10 +71,10 @@ extern double *vrtglobal;
 extern int    nTRIglobal, *triglobal, *labtriglobal;
 
 void outMesh() {
-    nVRTglobal = mesh.nPoint;
+    nVRTglobal = mesh.pts.size();
     vrtglobal = (double*) malloc(sizeof(double)*(2*nVRTglobal));
 
-    for (int i=0; i<mesh.nPoint; i++) {
+    for (size_t i=0; i < mesh.pts.size(); i++) {
         vrtglobal[2*i]   = mesh.pts[i].x;
         vrtglobal[2*i+1] = mesh.pts[i].y;
     }
