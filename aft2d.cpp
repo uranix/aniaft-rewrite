@@ -1,9 +1,9 @@
 #include <stdlib.h>
-#include "struct2.h"
-#include "user2.h"
-#include "region2.h"
-#include "tria2.h"
-#include "memory2.h"
+#include "struct.h"
+#include "user.h"
+#include "region.h"
+#include "tria.h"
+#include "memory.h"
 #include "aft2d.h"
 
 extern  StrucMesh2  mesh;

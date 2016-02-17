@@ -2,11 +2,11 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "struct2.h"
-#include "tree2.h"
-#include "memory2.h"
-#include "user2.h"
-#include "region2.h"
+#include "struct.h"
+#include "tree.h"
+#include "memory.h"
+#include "user.h"
+#include "region.h"
 
 StrucMesh2  mesh;
 extern StrucTree2  tree2;

@@ -1,9 +1,9 @@
 #include <stdlib.h>
 #include <math.h>
 
-#include "region2.h"
-#include "user2.h"
-#include "tree2.h"
+#include "region.h"
+#include "user.h"
+#include "tree.h"
 
 
 extern  StrucMesh2  mesh;

@@ -1,7 +1,7 @@
 #ifndef H_TREE2_MESH2D
 #define H_TREE2_MESH2D
 
-#include"struct2.h"
+#include"struct.h"
 
 typedef struct {
    PStrucNode2d root;            /*  root  of  the  quadtree  */

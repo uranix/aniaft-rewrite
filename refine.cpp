@@ -1,11 +1,11 @@
 #include <stdlib.h>
-#include "tree2.h"
-#include "region2.h"
-#include "refine2.h"
+#include "tree.h"
+#include "region.h"
+#include "refine.h"
 
-#include "tree2.h"
-#include "region2.h"
-#include "refine2.h"
+#include "tree.h"
+#include "region.h"
+#include "refine.h"
 
 #include <cassert>
 #include <map>

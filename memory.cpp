@@ -2,8 +2,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#include "memory2.h"
-#include "tree2.h"
+#include "memory.h"
+#include "tree.h"
 
 
 /* extern  variables */

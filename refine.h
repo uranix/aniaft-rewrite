@@ -4,7 +4,7 @@
 #include <math.h>
 #include <stdio.h>
 
-#include "struct2.h"
+#include "struct.h"
 
 double angle( int v1, int v2, int v );
 void test_quality( void );

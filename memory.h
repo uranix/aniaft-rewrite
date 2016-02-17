@@ -2,7 +2,7 @@
 #define H_MEMORY2_MESH2D
 
 
-#include"struct2.h"
+#include"struct.h"
 
 /* exported  function  function */
 void *nearAlloc( unsigned int n );

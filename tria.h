@@ -2,7 +2,7 @@
  #define H_TRIA2_MESH2D
 
 
-#include"struct2.h"
+#include"struct.h"
 
 
 int makeTria( void );

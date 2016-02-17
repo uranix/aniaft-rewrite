@@ -3,7 +3,7 @@
 
 #include <stdio.h>
 #include <string.h>
-#include "struct2.h"
+#include "struct.h"
 
 #define MAX_POINT 50000
 

@@ -1,7 +1,7 @@
 #ifndef H_USER2_MESH2D
 #define H_USER2_MESH2D
 
-#include"struct2.h"
+#include"struct.h"
 
 /* exported  function  function */
 void initUserParameters(char *pc);
