@@ -5,11 +5,10 @@
 #include "user.h"
 #include "tree.h"
 
+#include "mesh.h"
 
-#define MAX_POINT 50000
-
-extern  StrucMesh2  mesh;
-extern  int         boolDraft;
+extern  Mesh        mesh;
+extern  Tree        tree;
 
 typedef void (*userfn_t) (int *, double *, double *, double *);
 extern userfn_t userfn;
@@ -27,19 +26,16 @@ extern double *crvglobal;
 extern int    nVRTglobal;
 extern double *vrtglobal;
 
-extern  int StopAfterinitRegion;
-
 int     nLine;
-/*int     boolFAF=0;*/
-int         boolFAF;
 
 void makeLineAdvancedFront(int *boundVert, double *par_t, int nVert, int bNum,
         int bCond, int bCurve, int region,int bCut );
 void makeAddAF(int *boundVert, int nVert, int region, int bCut, int num);
-void outBoundary(char *outFileName);
 
 static  double  xBegin,xEnd,yBegin,yEnd; /* for  boundary0 */
 static  double  tBegin,tEnd; /* for  boundary 0-4 */
+
+#define MAX_POINT 50000
 
 static  int     bnd[5][MAX_POINT],crv1[MAX_POINT];
 static  double  crv[2][MAX_POINT];
@@ -50,13 +46,17 @@ void boundary0(double t, double *x, double *y)
 {
     x[0] = xBegin + (xEnd-xBegin)*t;
     y[0] = yBegin + (yEnd-yBegin)*t;
+
+    return;
 }/*boundary0*/
+
 
 void boundary(int n, double t, double *x, double *y)
 {
     if(n == 0) {
         boundary0(t,x,y);
-    } else {
+    } 
+    else {
         (* userfn) (&n, &t, x, y);
         x[0] = (x[0] - ReferenceCrd[0]) * ScalingFactor;
         y[0] = (y[0] - ReferenceCrd[1]) * ScalingFactor;
@@ -78,13 +78,13 @@ double nextT( int  b, double t )
 
     s = sizeFace( 0.5*(x0+x1) , 0.5*(y0+y1) );
     er= 0.001*s;
-    if(distance(x0,y0,x1,y1)<=s)
+    if(Tree::distance(x0,y0,x1,y1)<=s)
         return( -1. );
 
     while( fabs(s1-s) >= er ){
         t = 0.5*(t0+t1);
         boundary(b,t,&x,&y);
-        s1 = distance(x0,y0,x,y);
+        s1 = Tree::distance(x0,y0,x,y);
         s = sizeFace( 0.5*(x0+x) , 0.5*(y0+y) );
         er = 0.01*s;
         if(s1>s) t1=t; else t0=t;
@@ -104,8 +104,7 @@ void smoothingBoundary( int *vert, double *parameter, int iBound, int n)
     /*******************************
       n - number  of  vert  in  line  of boundary  including  two  v-vert
      *********************************/
-{
-    int    i,j=0;
+{  int    i,j=0;
     double t,tp,tn,sp,sn,x,y;
     int    v,vp,vn;
 
@@ -114,19 +113,12 @@ void smoothingBoundary( int *vert, double *parameter, int iBound, int n)
             v  = vert[i];
             vp = vert[i-1];  tp = parameter[i-1];
             vn = vert[i+1];  tn = parameter[i+1];
-
-            Point &p = mesh.pts[v];
-
-            const Point &pp = mesh.pts[vp];
-            const Point &pn = mesh.pts[vn];
-
-            sp = sizeFace(0.5*(p.x + pp.x), 0.5*(p.y + pp.y));
-            sn = sizeFace(0.5*(p.x + pn.x), 0.5*(p.y + pn.y));
-            t = tp + (tn - tp) * sp / (sp+sn);
+            sp = sizeFace( 0.5*(mesh.pts[v].x+mesh.pts[vp].x) , 0.5*(mesh.pts[v].y+mesh.pts[vp].y) );
+            sn = sizeFace( 0.5*(mesh.pts[v].x+mesh.pts[vn].x) , 0.5*(mesh.pts[v].y+mesh.pts[vn].y) );
+            t = tp+(tn-tp)*sp/(sp+sn);
             parameter[i] = t;
             boundary(iBound,t,&x,&y);
-
-            p.move(x, y);
+            mesh.pts[v].move(x, y);
         }
         j++;
     }
@@ -142,34 +134,30 @@ extern double *vrbrglobal;
 
 void initFAFRegion( void )
 {
-    long      p;
-    double    s=0.;
+    int       i,k,v1,v2,nVert;
+    double    x,y,s=0.;
+    int 		 *ind;
 
     if( mesh.nRegion == 0 )
         mesh.nRegion = 1;
     /* init memory for mesh.nRLine */
-    p = (unsigned long)mesh.nRegion*sizeof(int);
-    mesh.nRPoint = (int *)malloc(p);
-    if (mesh.nRPoint == NULL)
-        perror("aniAFT");
-    mesh.nRTria = (int *)malloc(p);
-    if (mesh.nRTria == NULL)
-        perror("aniAFT");
 
-    int nVert = nVrglobal;
-    std::vector<int> ind(nVert + 1);
-    int k=0;
-    for (int i=0; i<nVert; i++){
-        double x = vrbrglobal[i*2];
-        double y = vrbrglobal[i*2+1];
+    nVert = nVrglobal;
+    ind = (int *)malloc(sizeof(int)*(nVert+1));
+    k=0;
+    for (i=0;i<nVert;i++){
+        x = vrbrglobal[i*2];
+        y = vrbrglobal[i*2+1];
         ind[i+1] = k+1;
-        for (size_t j=0; j<mesh.pts.size(); j++)
-            if (x==mesh.pts[j].x && y==mesh.pts[j].y) {
+        for (size_t j = 0; j < mesh.pts.size(); j++) {
+            const Point &p = mesh.pts[j];
+            if (x==p.x && y==p.y) {
                 ind[i+1] = j+1;
                 break;
             }
+        }
         if (ind[i+1] == k+1) {
-            mesh.pts.push_back(Point(x, y, true));
+            mesh.addPoint(x, y, true);
             k++;
         }
     }
@@ -177,9 +165,9 @@ void initFAFRegion( void )
     nBNDglobal = nBrglobal;
     bndglobal = (int*) malloc(sizeof(int)*(5*nBNDglobal));
 
-    for (int i=0; i<nVert; i++){
-        int v1 = ind[brglobal[i*2]];
-        int v2 = ind[brglobal[i*2+1]];
+    for (i=0;i<nVert;i++){
+        v1 = ind[brglobal[i*2]];
+        v2 = ind[brglobal[i*2+1]];
         bndglobal[5*i+0] = v1;
         bndglobal[5*i+1] = v2;
         bndglobal[5*i+2] = 0;
@@ -187,29 +175,21 @@ void initFAFRegion( void )
         bndglobal[5*i+4] = 1;
         v1--;  v2--;
         if (v1!=v2) {
-            (void)addFace(v1,v2,0);
+            tree.addFace(mesh, v1,v2,0);
             const Point &p1 = mesh.pts[v1];
             const Point &p2 = mesh.pts[v2];
-            s += (p1.y * p2.x - p2.y * p1.x);
+            s+=(p1.y*p2.x-p2.y*p1.x);
         }
-    }
+    }/* for i */
     if (s<0) {
         printf("\nWarning: wrong orientation of boundary edges!\n\n");
     }
+    free(ind);
 
     nCRVglobal = 0;
     crvglobal = (double*) malloc(sizeof(double)*(2*nCRVglobal));
     iFNCglobal= (int*) malloc(sizeof(int)*(nCRVglobal));
-
-    if (StopAfterinitRegion != 0) {
-        nVRTglobal = mesh.pts.size();
-        vrtglobal = (double*) malloc(sizeof(double)*(2*nBnd));
-        for (size_t i = 0; i < mesh.pts.size(); i++) {
-            vrtglobal[2*i]   = mesh.pts[i].x;
-            vrtglobal[2*i+1] = mesh.pts[i].y;
-        }
-    }
-}
+}/*initFAFRegion*/
 
 extern double *bvglobal;
 extern double *bltailglobal;
@@ -241,7 +221,7 @@ void initLineRegion( void )
     for (i=0;i<nVVert;i++){
         x = bvglobal[i*2];
         y = bvglobal[i*2+1];
-        mesh.pts.push_back(Point(x, y, true));
+        mesh.addPoint(x, y, true);
         vVert[i] = mesh.pts.size() - 1;
     }
     nLine = nLineglobal;
@@ -288,10 +268,6 @@ void initLineRegion( void )
         if( mesh.bCut == NULL )  perror("aniAFT");
     }
     p = (unsigned long)mesh.nRegion*sizeof(int);
-    mesh.nRPoint = (int *)malloc(p);
-    if( mesh.nRPoint == NULL )  perror("aniAFT");
-    mesh.nRTria = (int *)malloc(p);
-    if( mesh.nRTria == NULL )  perror("aniAFT");
 
     nLine = nLineglobal;
 
@@ -323,8 +299,8 @@ void initLineRegion( void )
         par_t[nVert] = tBegin;
         boundVert[nVert++] = vVert[vBegin];
         t = tBegin;
-        for (j=0;;j++){
-            if (nVert >= MAX_POINT) {
+        for(j=0;;j++){
+            if( nVert >= MAX_POINT ) {
                 fprintf(stderr, "aniAFT: line: max point\n");
                 break;
             }
@@ -332,7 +308,7 @@ void initLineRegion( void )
             if( t < 0. )
                 break;
             boundary(bNum,t,&x,&y);
-            mesh.pts.push_back(Point(x, y, true));
+            mesh.addPoint(x, y, true);
             par_t[nVert] = t;
             boundVert[nVert++] = mesh.pts.size() - 1;
         }/* for(bool;;) */
@@ -344,7 +320,6 @@ void initLineRegion( void )
     free(boundVert);
     free(vVert);
     free(par_t);
-    outBoundary(mesh.outFileName);
     return;
 }/*initLineRegion*/
 
@@ -352,7 +327,7 @@ void initLineRegion( void )
 void initRegion( void )
 {
     nBnd=0,nCrv=0;
-    if( boolFAF )
+    if( mesh.FAF )
         initFAFRegion();
     else
         initLineRegion();
@@ -363,10 +338,14 @@ void  initAddRegion( int num )
 {
     int  i;
 
-    for(i=0;i<mesh.nRLine;i++){
-        if( mesh.region[i] == num || mesh.bCut[i] == num )
-            makeAddAF(mesh.boundVert[i],mesh.nVert[i],mesh.region[i],
-                    mesh.bCut[i],num);
+    for(i=0;i<mesh.nRLine;i++) {
+        if (mesh.region[i] == num || mesh.bCut[i] == num)
+            makeAddAF(
+                    mesh.boundVert[i],
+                    mesh.nVert[i],
+                    mesh.region[i],
+                    mesh.bCut[i],
+                    num);
     }
 
     return;
@@ -377,16 +356,15 @@ void makeAddAF( int *boundVert, int nVert, int region, int bCut, int num )
 {
     int       i=0;
 
-    for (i=0;i<nVert-1;i++){
+    for (i=0;i<nVert-1;i++) {
         if( region == num )
-            (void)addFace(boundVert[i],boundVert[i+1],bCut>0);
+            tree.addFace(mesh, boundVert[i],boundVert[i+1],bCut>0);
         if( bCut == num )
-            (void)addFace(boundVert[i+1],boundVert[i],bCut>0);
-    };/* for i */
+            tree.addFace(mesh, boundVert[i+1],boundVert[i],bCut>0);
+    };
 
     return;
-}/* makeAddAF */
-
+}
 
 void  makeLineAdvancedFront( int *boundVert, double *par_t, int nVert,int bNum,
         int bCond, int bCurve, int region, int bCut )
@@ -440,48 +418,13 @@ void  makeLineAdvancedFront( int *boundVert, double *par_t, int nVert,int bNum,
         }
 
         if( region == 1 )
-            (void)addFace(boundVert[i],boundVert[i+1],bCut>0);
+            tree.addFace(mesh, boundVert[i],boundVert[i+1],bCut>0);
         if( bCut == 1 )
-            (void)addFace(boundVert[i+1],boundVert[i],bCut>0);
+            tree.addFace(mesh, boundVert[i+1],boundVert[i],bCut>0);
     };/* for i */
 
     return;
 }/* makeLineAdvancedFront */
-
-void outBoundary( char *outFileName )
-{
-    int       i=0,j;
-    (void) outFileName;
-
-    nBNDglobal = nBnd;
-    bndglobal = (int*) malloc(sizeof(int)*(5*nBNDglobal));
-    for(i=0;i<nBnd;i++){
-        for(j=0;j<5;j++)
-            bndglobal[5*i+j] = bnd[j][i];
-    }
-
-    nCRVglobal = nCrv;
-    crvglobal = (double*) malloc(sizeof(double)*(2*nCRVglobal));
-    iFNCglobal= (int*) malloc(sizeof(int)*(nCRVglobal));
-    for(i=0;i<nCrv;i++){
-        iFNCglobal[i] = crv1[i];
-        crvglobal[2*i  ] = crv[0][i];
-        crvglobal[2*i+1] = crv[1][i];
-    }
-
-
-    if ( StopAfterinitRegion != 0 ) {
-        nVRTglobal = nBnd;
-        vrtglobal = (double*) malloc(sizeof(double)*(2*nBnd));
-        for(i=0;i<nBnd;i++){
-            vrtglobal[2*i]   = mesh.pts[i].x;
-            vrtglobal[2*i+1] = mesh.pts[i].y;
-        }
-    }
-
-    return;
-}/*outBoundary*/
-
 
 double sizeFace( double x, double y )
 {

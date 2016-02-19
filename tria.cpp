@@ -1,14 +1,16 @@
 #include <cmath>
 #include <cstdlib>
 
-#include"region.h"
-#include"refine.h"
-#include"tria.h"
-#include"user.h"
+#include "region.h"
+#include "tria.h"
+#include "user.h"
 
 #include <map>
 
 #define SHOWPROGRESS 0
+
+extern Mesh mesh;
+extern Tree tree;
 
 double Triangulation::dist(int  a, int b) const {
     const Point &pa = mesh.pts[a];
@@ -115,7 +117,7 @@ int Triangulation::intsect(int a, int b, int c, int u, int v) const {
 }
 
 int Triangulation::check(PStrucFace2 e, int pn) {
-    int v1, v2, i, p1, p2;
+    int v1, v2, p1, p2;
 
     intedge = NULL;
     v1 = e->v1;
@@ -126,11 +128,11 @@ int Triangulation::check(PStrucFace2 e, int pn) {
         return 1;
     }
 
-    for (i = 0; i < tree.nVicinityFace; i++) {
-        p1 = tree.vicinityFace[i]->v1;
-        p2 = tree.vicinityFace[i]->v2;
+    for (const PStrucFace2 face : tree.vicinityFaces) {
+        p1 = face->v1;
+        p2 = face->v2;
         if (intsect(v1, v2, pn, p1, p2)) {
-            intedge = tree.vicinityFace[i];
+            intedge = face;
             return 1;
         }
     }
@@ -212,7 +214,7 @@ int Triangulation::new_point(PStrucFace2 e) {
 
     double x, y;
 
-    if (!FAF) {
+    if (!mesh.FAF) {
         x = 0.5 * (x1 + x2) + a * 0.3 * p;
         y = 0.5 * (y1 + y2) + b * 0.3 * p;
         p = sizeFace(x, y);
@@ -228,20 +230,18 @@ int Triangulation::new_point(PStrucFace2 e) {
     x = 0.5 * (x1 + x2) + a * std::sqrt(p*p-r*r);
     y = 0.5 * (y1 + y2) + b * std::sqrt(p*p-r*r);
 
-    // XXX the added point lies beyond the end of the array. Cannot emulate that using std::vector
-    addPoint(x, y);
-//    mesh.nPoint--;
+    mesh.addPoint(x, y);
     new_vert = mesh.pts.size() - 1;
 
     /*____________________ TEST __________ TEST ____________________________*/
 
-    double radius = distance(x, y, x1, y1);
+    double radius = Tree::distance(x, y, x1, y1);
 
     r = radius * 1.0001220703125; // 8193. / 8192
     double rmin = (beta*r + minrho + std::sqrt((beta*r - minrho)*(beta*r - minrho) + alpha))/2.0;
     r = radius * 2.0;
 
-    vicinityFaces(x, y, r);
+    tree.buildVicinityFaces(x, y, r);
 
     int neari = -1;
     double rv = rmin;
@@ -251,18 +251,18 @@ int Triangulation::new_point(PStrucFace2 e) {
     BestCandidates cand;
     cand.insert(new_vert, func_q(v1, v2, new_vert));
 
-    for (int i = 0; i < tree.nVicinityFace; i++) {
-        double h = height(tree.vicinityFace[i]);
+    for (const PStrucFace2 face : tree.vicinityFaces) {
+        double h = height(face);
         if (h < 0.5*hc) {
             dirty++;
 //            printf("dirty: %lf, %lf\n", hc, h);
         }
-        for (const int pn : { tree.vicinityFace[i]->v1, tree.vicinityFace[i]->v2 } ) {
+        for (const int pn : { face->v1, face->v2 } ) {
             if ((pn==v1) || (pn==v2))
                 continue;
             if (idet2i3(v1, v2, pn) != 1)
                 continue;
-            r = distance(mesh.pts[pn].x, mesh.pts[pn].y, x, y);
+            r = Tree::distance(mesh.pts[pn].x, mesh.pts[pn].y, x, y);
             if (r < rv) {
                 rv = r;
                 neari = pn;
@@ -311,17 +311,17 @@ int Triangulation::new_point(PStrucFace2 e) {
 }
 
 int Triangulation::chknadd(int v1, int v2) {
-    int i, p1, p2;
+    int p1, p2;
 
-    for (i = 0; i < tree.nVicinityFace; i++) {
-        p1 = tree.vicinityFace[i]->v1;
-        p2 = tree.vicinityFace[i]->v2;
+    for (const PStrucFace2 face : tree.vicinityFaces) {
+        p1 = face->v1;
+        p2 = face->v2;
         if ((p1==v2) && (p2==v1)) {
-            todelete[ntodelete++] = tree.vicinityFace[i];
+            todelete[ntodelete++] = face;
             return 1;
         }
     }
-    addFace(v1, v2, 0);
+    tree.addFace(mesh, v1, v2, 0);
     return 0;
 }
 
@@ -330,7 +330,7 @@ int Triangulation::newTria(int lab) {
     int v1, v2;
     PStrucFace2 e1;
 
-    e1 = tree.face[0];
+    e1 = tree.faces.front();
     v1 = e1->v1;
     v2 = e1->v2;
     nn = new_point(e1);
@@ -342,44 +342,32 @@ int Triangulation::newTria(int lab) {
 
     todelete[0] = e1;
     ntodelete = 1;
-    addTria(v1, v2, new_vert, lab);
+    mesh.addTria(v1, v2, new_vert, lab);
 
     chknadd(new_vert, v2);
     chknadd(v1, new_vert);
     for (nn = 0; nn < ntodelete; nn++)
-        remFace(todelete[nn]);
+        tree.remFace(todelete[nn]);
     return 0;
 }
 
-extern char * ppMemory;
-extern PStrucFace2  *ptreeface;
-extern int StopAfterinitRegion;
 extern int    nVRTglobal;
 extern int    nTRIglobal;
 
 int Triangulation::makeTria() {
-    int i = 0, j, err = 0, smooth = 0;
+    int i = 0, err = 0, smooth = 0;
 
-    init();
     initRegion();
 
-    if ( StopAfterinitRegion != 0 ) {
-        free(ppMemory);
-        free(ptreeface);
-        return 0;
-    }
-
     for (i = 1; i <= mesh.nRegion; i++) {
-        mesh.nRPoint[i-1] = mesh.pts.size();
-        mesh.nRTria[i-1] = mesh.tri.size();
-        minrho = dist(tree.face[0]->v1, tree.face[0]->v2);
+        int nRPointPrev = mesh.pts.size();
+        minrho = dist(tree.faces[0]->v1, tree.faces[0]->v2);
 
-        for (j=0; j<tree.nFace; j++) {
-            if (minrho > dist(tree.face[j]->v1, tree.face[j]->v2))
-                minrho = dist(tree.face[j]->v1, tree.face[j]->v2);
-        }
+        for (const auto &f : tree.faces)
+            if (minrho > dist(f->v1, f->v2))
+                minrho = dist(f->v1, f->v2);
 
-        if (FAF)
+        if (mesh.FAF)
             minrho *= 0.95;
         else
             minrho = 0.0;
@@ -387,7 +375,8 @@ int Triangulation::makeTria() {
         minrho *= beta;
         alpha = 2.0*minrho*(1.0-beta)/beta;
         alpha *= alpha;
-        while (tree.nFace > 0) {
+
+        while (!tree.faces.empty()) {
             err = newTria(i);
             if (err)
                 break;
@@ -396,6 +385,7 @@ int Triangulation::makeTria() {
                 fflush(stdout);
             }
         }
+
         if (err)
             break;
         if (SHOWPROGRESS)
@@ -403,27 +393,22 @@ int Triangulation::makeTria() {
         fill_eadj();
         fill_tadj();
 
-        smooth += opt_func(mesh.nRPoint[i-1]);
+        smooth += opt_func(nRPointPrev);
 
         if (i != mesh.nRegion) {
             initAddRegion(i + 1);
         }
-        mesh.nRPoint[i-1] = mesh.pts.size() - mesh.nRPoint[i-1];
-        mesh.nRTria[i-1] = mesh.tri.size() - mesh.nRTria[i-1];
     }
 
-
     printf("\nRESULT :  %5lu     %5lu    \n", mesh.pts.size(), mesh.tri.size());
+
     if (!smooth)
-        regularity();
+        mesh.regularity(true);
 
-    test_quality();
+    mesh.test_quality();
+    mesh.outMesh();
 
-    outMesh();
     if (!err) {
-        free(ppMemory);
-        free(ptreeface);
-    } else {
         nVRTglobal = mesh.pts.size();
         nTRIglobal = mesh.tri.size();
     }

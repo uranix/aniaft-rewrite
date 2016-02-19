@@ -5,10 +5,7 @@
 #include <string.h>
 #include "struct.h"
 
-class Region {
-public:
-    double sizeFace(double x, double y);
-};
+struct Region {};
 
 double sizeFace(double x,double y);
 void  makeAdvancedFront(int *boundVert, int *n_bound, int *cut, int *curve, double *par_t, char *outFileName);

@@ -23,7 +23,7 @@ struct Triangle {
     Triangle() : remove(false) { }
 };
 
-typedef struct {
+typedef struct{
     int     v1,v2;     /**/
     int     f;          /* number  of  face       */
     double  x,y,s;    /**/
@@ -57,6 +57,7 @@ typedef  StrucNode2  *PStrucNode2;
 typedef  PStrucNode2  StrucList2[4];
 typedef  StrucList2   *PStrucList2;
 
+#define  MAX_NEIGBOR2   16
 #define  S_StrucList2  sizeof(StrucList2)
 #define  S_StrucNode2  sizeof(StrucNode2)
 #define  S_StrucFace2  sizeof(StrucFace2)

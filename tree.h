@@ -1,35 +1,42 @@
 #ifndef H_TREE2_MESH2D
 #define H_TREE2_MESH2D
 
-#include"struct.h"
+#include "struct.h"
 
-typedef struct {
-   PStrucNode2d root;            /*  root  of  the  quadtree  */
-   PStrucFace2  *face;           /*  array of  the  faces  in  advanced  front */
-   int          nFace;
-   long         maxFace;         /*  number  &  max  ...  of  faces  in  ... */
+#include <vector>
 
-   PStrucFace2  *vicinityFace;   /*  array of  faces  the  vicinity  */
-   int          nVicinityFace,maxVicinityFace;   /*  number  &  max  ...  of  faces  in  ... */
-   double       xVicinity,yVicinity;   /*  center  of  vicinity */
-   double       sVicinity;       /*  size  of  vicinity */
+class Mesh;
+class Triangulation;
 
-   int          fill,empty;      /*  global  for  recursive  remove  function  */
-   double       xc,yc,side;      /*  global  for  recursive  remove  &  insert  function  */
-   double       x,y;             /*  global  for  recursive  remove  &  insert  function  */
-} StrucTree2;
+struct Tree {
+    PStrucNode2d root;            /*  root  of  the  quadtree  */
 
-/* exported  function */
-int  direction(double x,double y,double xc,double yc);
-void center(double *x,double *y,double side,int d);
-double  distance(double x,double y,double xc,double yc);
-double distanceS(double x,double y,double xc,double yc);
-PStrucFace2 addFace(int v1, int v2, int twin );
-void remFace( PStrucFace2  face );
-double nearest2( int *vert, double x, double y, double size );
-void vicinityFaces( double x, double y, double size );
+    std::vector<PStrucFace2> faces;
+    std::vector<PStrucFace2> vicinityFaces;
+
+    double       xVicinity,yVicinity;   /*  center  of  vicinity */
+    double       sVicinity;       /*  size  of  vicinity */
+
+    int          fill,empty;      /*  global  for  recursive  remove  function  */
+    double       xc,yc,side;      /*  global  for  recursive  remove  &  insert  function  */
+    double       x,y;             /*  global  for  recursive  remove  &  insert  function  */
+
+    void addFaceArray(PStrucFace2 face);
+    void remFaceArray(int face);
+    int  sectQuad() const;
+    void vicinityFacesRec(PStrucNode2d node);
+public:
+    Tree();
+    ~Tree();
+    static int direction(double x,double y,double xc,double yc);
+    static void center(double *x,double *y,double side,int d);
+    static double distance(double x,double y,double xc,double yc);
+    static double distanceS(double x,double y,double xc,double yc);
+    PStrucFace2 addFace(const Mesh &mesh, int v1, int v2, int twin);
+    void remFace(PStrucFace2  face);
+    void buildVicinityFaces(double x, double y, double size);
+
+    friend class Triangulation;
+};
 
 #endif
-
-
-

@@ -2,12 +2,11 @@
 #include "struct.h"
 #include "user.h"
 #include "region.h"
+#include "mesh.h"
 #include "tria.h"
-#include "memory.h"
 #include "aft2d.h"
 
-extern  StrucTree2  tree;
-unsigned int _stklen=24000u;
+extern  Mesh  mesh2;
 
 double ReferenceCrd[2];
 double ScalingFactor;
@@ -22,7 +21,7 @@ int    nBrglobal, *brglobal;
 int    nVrglobal;
 double *vrglobal, *vrbrglobal;
 
-int    boolFAFglobal, meshnSmoothglobal;
+int    boolFAFglobal, mesh2nSmoothglobal;
 double SIglobal, S1global, SMglobal;
 
 int    nVRTglobal;
@@ -31,7 +30,6 @@ int    nTRIglobal, *triglobal, *labtriglobal, nBNDglobal, *bndglobal;
 int    nCRVglobal;
 double *crvglobal;
 int    *iFNCglobal;
-int    StopAfterinitRegion;
 
 void  userBoundaryDummy(int *i, double *t, double *x, double *y)
 {
@@ -89,7 +87,7 @@ int aft2dfront_(
             brglobal[k*2] = i+1;
             brglobal[k*2+1] = i+2;
             for( j = 0; j < 2; j++) vrbrglobal[i*2+j] = vrbr[i*2+j];
-            if (last>=0 && vrbr[last*2]==vrbr[i*2] &&
+            if (last>=0 && vrbr[last*2]==vrbr[i*2] && 
                     vrbr[last*2+1]==vrbr[i*2+1]) {
                 brglobal[(k-1)*2+1] = last+1;
                 last = -1;
@@ -107,14 +105,14 @@ int aft2dfront_(
     xmax            = vrbrglobal[0];
     ymax            = vrbrglobal[1];
     for( i = 1; i < nVrglobal; i++) {
-        if ( ReferenceCrd[0] > vrbrglobal[i*2+0] )
-            ReferenceCrd[0] = vrbrglobal[i*2+0];
-        if ( ReferenceCrd[1] > vrbrglobal[i*2+1] )
-            ReferenceCrd[1] = vrbrglobal[i*2+1];
-        if ( xmax < vrbrglobal[i*2+0] )
-            xmax = vrbrglobal[i*2+0];
-        if ( ymax < vrbrglobal[i*2+1] )
-            ymax = vrbrglobal[i*2+1];
+        if ( ReferenceCrd[0] > vrbrglobal[i*2+0] ) 
+            ReferenceCrd[0] = vrbrglobal[i*2+0];                    
+        if ( ReferenceCrd[1] > vrbrglobal[i*2+1] ) 
+            ReferenceCrd[1] = vrbrglobal[i*2+1];                    
+        if ( xmax < vrbrglobal[i*2+0] ) 
+            xmax = vrbrglobal[i*2+0];                    
+        if ( ymax < vrbrglobal[i*2+1] ) 
+            ymax = vrbrglobal[i*2+1];                    
     }
     if ( xmax-ReferenceCrd[0] < ymax - ReferenceCrd[1] ) {
         ScalingFactor = 1.0 / ( ymax - ReferenceCrd[1] );
@@ -129,12 +127,10 @@ int aft2dfront_(
     S1global        = 0.1 ;
     SIglobal        = 0.2;
     SMglobal        = 0.35;
-    meshnSmoothglobal  = 5;
-    StopAfterinitRegion = 0;
+    mesh2nSmoothglobal  = 5;
 
-    Mesh mesh;
-    Triangulation tria(mesh, tree, true);
-    err = tria.makeTria();
+    Triangulation triang;
+    err = triang.makeTria();
 
     *pnVRT = nVRTglobal;
     *pnTRI = nTRIglobal;
@@ -157,8 +153,6 @@ int aft2dfront_(
         labbnd[i]  = bndglobal[5*i+4];
     }
 
-    freeMemory();
-
     free(brglobal);
     free(vrbrglobal);
 
@@ -166,8 +160,6 @@ int aft2dfront_(
     free(bndglobal);
     free(crvglobal);
     free(iFNCglobal);
-    if ( StopAfterinitRegion == 0 ) free(triglobal);
-    if ( StopAfterinitRegion == 0 ) free(labtriglobal);
 
     return err;
 }/*aft2dfront*/
@@ -209,14 +201,14 @@ int aft2dboundary_( int *pnVert, double *bv,
     xmax            = bvglobal[0];
     ymax            = bvglobal[1];
     for( i = 1; i < nVertglobal; i++) {
-        if ( ReferenceCrd[0] > bvglobal[i*2+0] )
-            ReferenceCrd[0] = bvglobal[i*2+0];
-        if ( ReferenceCrd[1] > bvglobal[i*2+1] )
-            ReferenceCrd[1] = bvglobal[i*2+1];
-        if ( xmax < bvglobal[i*2+0] )
-            xmax = bvglobal[i*2+0];
-        if ( ymax < bvglobal[i*2+1] )
-            ymax = bvglobal[i*2+1];
+        if ( ReferenceCrd[0] > bvglobal[i*2+0] ) 
+            ReferenceCrd[0] = bvglobal[i*2+0];                    
+        if ( ReferenceCrd[1] > bvglobal[i*2+1] ) 
+            ReferenceCrd[1] = bvglobal[i*2+1];                    
+        if ( xmax < bvglobal[i*2+0] ) 
+            xmax = bvglobal[i*2+0];                    
+        if ( ymax < bvglobal[i*2+1] ) 
+            ymax = bvglobal[i*2+1];                    
     }
     if ( xmax-ReferenceCrd[0] < ymax - ReferenceCrd[1] ) {
         ScalingFactor = 1.0 / ( ymax - ReferenceCrd[1] );
@@ -230,12 +222,10 @@ int aft2dboundary_( int *pnVert, double *bv,
 
     boolFAFglobal = 0;
     S1global        = hsze[0];
-    meshnSmoothglobal = 5;
-    StopAfterinitRegion = 0;
+    mesh2nSmoothglobal = 5;
 
-    Mesh mesh;
-    Triangulation tria(mesh, tree, false);
-    err = tria.makeTria();
+    Triangulation triang;
+    err = triang.makeTria();
 
     *pnVRT = nVRTglobal;
     *pnTRI = nTRIglobal;
@@ -276,8 +266,6 @@ int aft2dboundary_( int *pnVert, double *bv,
        }
        */
 
-    freeMemory();
-
     free(bvglobal);
     free(blglobal);
     free(bltailglobal);
@@ -291,8 +279,6 @@ int aft2dboundary_( int *pnVert, double *bv,
     free(bndglobal);
     free(crvglobal);
     free(iFNCglobal);
-    if ( StopAfterinitRegion == 0 ) free(triglobal);
-    if ( StopAfterinitRegion == 0 ) free(labtriglobal);
 
     return err;
 }/*aft2dboundary*/
@@ -322,6 +308,7 @@ void errorExit2(int group, const char *number)
     }
     printf("User message: %s\n",number);
     exit(1);
+    return;
 }/* error */
 
 

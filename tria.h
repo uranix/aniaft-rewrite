@@ -35,10 +35,7 @@ struct edge {
 
 class Triangulation {
     double minrho,alpha,beta;
-    Mesh &mesh;
-    StrucTree2 &tree;
 
-    bool FAF;
     int new_vert;
 
     PStrucFace2 intedge;
@@ -69,7 +66,7 @@ class Triangulation {
     int newTria(int lab);
 
 public:
-    Triangulation(Mesh &mesh, StrucTree2 &tree, bool FAF) : mesh(mesh), tree(tree), FAF(FAF) { }
+//    Triangulation(Mesh &mesh, Tree &tree) : mesh(mesh), tree(tree) { }
 /* error codes:
  *  0 - success
  * -1 - zero sized edge (error in user data)

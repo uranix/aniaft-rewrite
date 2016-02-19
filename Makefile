@@ -2,20 +2,19 @@
 CXX=g++ -fmax-errors=5
 CXXFLAGS=-std=c++11 -O3 -g -Wall
 
-F77=gfortran
+F77=gcc
 F77FLAGS=-O3 -g -Wall
 
-CXXSRC=aft2d.cpp memory.cpp refine.cpp region.cpp mesh.cpp \
-	tria.cpp user.cpp geometry.cpp mesh.cpp \
-	tree.cpp
+CXXSRC=tree.cpp aft2d.cpp refine.cpp mesh.cpp \
+	tria.cpp user.cpp mesh.cpp region.cpp
 
-F77SRC=main.f graph.f
+CSRC=main_boundary_wing.c demo.c crv_model.c
 
 CXXOBJ=${CXXSRC:.cpp=.o}
-F77OBJ=${F77SRC:.f=.o}
+COBJ=${CSRC:.c=.o}
 
-all: ${F77OBJ} ${CXXOBJ} 
-	c++ -o main $^ -lm -lgfortran
+all: ${COBJ} ${CXXOBJ} 
+	c++ -o main $^ -lm -lf2c
 
 clean:
 	rm -f *.o main

@@ -78,30 +78,30 @@ void Mesh::test_quality() {
         if (!FAF)
             size=1.0/sizeFace(xc,yc);
         else
-            size=3.0/(distance(x1,y1,x2,y2)+distance(x2,y2,x3,y3)+distance(x3,y3,x1,y1));
+            size=3.0/(Tree::distance(x1,y1,x2,y2)+Tree::distance(x2,y2,x3,y3)+Tree::distance(x3,y3,x1,y1));
 
-        pp=size*distance(x1,y1,x2,y2);
+        pp=size*Tree::distance(x1,y1,x2,y2);
         if(pp<min)
             min=pp;
         if(pp>max)
             max=pp;
-        pp=size*distance(x3,y3,x2,y2);
+        pp=size*Tree::distance(x3,y3,x2,y2);
         if(pp<min)
             min=pp;
         if(pp>max)
             max=pp;
-        pp=size*distance(x1,y1,x3,y3);
+        pp=size*Tree::distance(x1,y1,x3,y3);
         if(pp<min)
             min=pp;
         if(pp>max)
             max=pp;
     }
-
+/*
     printf("Max edge = %lf, min edge = %lf\n", max, min);
     printf("Angular info, min = %lf, max = %lf\n", min_angle * 180 / M_PI, max_angle * 180 / M_PI);
     for (int j = 0; j < 6; j++)
         printf("j = %d nA = %d perc = %lf\n", j, na[j], 100. * na[j] / 3 / tri.size());
-
+*/
     calcNeigTria();
     calcNeigbor();
 
@@ -240,6 +240,14 @@ void Mesh::calcNeigbor() {
 }
 
 void Mesh::calcEdge() {
+    calcNeigTria();
+    calcNeigbor();
+
+    vb.clear();
+    ve.clear();
+    tria1.clear();
+    tria2.clear();
+
     for(int i = 0; i < (int)pts.size(); i++) {
         Point &p = pts[i];
         if (p.skip_neib)
@@ -396,12 +404,12 @@ void Mesh::splitPoint() {
             size = sizeFace(p.x, p.y);
         else {
             const Point &p2 = pts[p.neib[n2]];
-            size = distance(p.x, p.y, p2.x, p2.y);
+            size = Tree::distance(p.x, p.y, p2.x, p2.y);
         }
 
         addPoint(p.x+0.1*size, p.y);
         Point &pv = pts.back();
-        int vert = pts.size() - 1;
+        int vert = lastpoint();
 
         pv.neib.push_back(-1);
 
@@ -519,8 +527,9 @@ void Mesh::regularity(bool Regul) {
     if (Regul) {
         calcNeigTria();
         calcNeigbor();
+        test_quality();
 
-        for(i=0;i<5;i++)
+        for (int i = 0; i < 5; i++)
             smoothing();
 
         test_quality();
@@ -536,15 +545,16 @@ void Mesh::regularity(bool Regul) {
         mergePoint();
         for(i=0;i<5;i++)
             smoothing();
-        test_quality();
-
-        splitPoint();
-        splitPoint();
-        splitPoint();
 
         test_quality();
-        printf("SWAP:\n");
 
+        splitPoint();
+        splitPoint();
+        splitPoint();
+
+        test_quality();
+
+        printf("Swap\n");
         swapEdge();
         for(i=0;i<5;i++)
             smoothing();

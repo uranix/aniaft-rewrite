@@ -2,11 +2,13 @@
 #include<stdlib.h>
 #include<math.h>
 
-void errorExit2(int group, const char *number);
+
+void errorExit2(int group, char *number);
 
 static double X1=0.30,X2=0.70,XE=1.,Y2=0.5;
 static double C1=0.17735, C2=-0.075597, C3=-0.212836, C4=0.17363, C5=-0.062547;
-static double wingAngle=0.4;
+static double wingAngle=0.7; 
+
 
 void boundaryWing(double *t, double *x, double *y)
 {
@@ -52,7 +54,7 @@ void boundarySlit(double *t, double *x, double *y)
 
 
 
-extern "C" void userboundary_(int *i, double *t, double *x, double *y)
+void userboundary_(int *i, double *t, double *x, double *y)
 {
     switch (*i) {
         case 1:
@@ -68,16 +70,11 @@ extern "C" void userboundary_(int *i, double *t, double *x, double *y)
     return;
 }  // userboundary
 
-extern "C" double usersize_(double *xy)
-{
-    const double CX2 = 0.5 * (X1+X2);
+double usersize_(double *xy) {
+    double dx = xy[0] - 0.5 * (X2 + X1);
+    double dy = xy[1] - Y2;
 
-    const double dx = xy[0] - CX2;
-    const double dy = xy[1] - Y2;
+    double dr2 = dx*dx + dy*dy;
 
-    const double dr2 = dx * dx + dy * dy;
-
-    (void)dr2;
-
-    return 0.005;
-}  // userboundary
+    return 0.005 * (1 + 10 * dr2);
+}
