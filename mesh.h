@@ -1,34 +1,40 @@
 #ifndef H_MESH_MESH2D
 #define H_MESH_MESH2D
 
-#include "region.h"
-#include "struct.h"
+#include <vector>
+#include <string>
 
-extern int boolFAFglobal;
-
-struct XCoord {
-    std::vector<Point> &pts;
-    XCoord(std::vector<Point> &pts) : pts(pts) { }
-    double &operator[](int i) { return pts[i].x; }
-    const double &operator[](int i) const { return pts[i].x; }
+struct Vertex {
+    double x, y;
+    bool remove;
+    bool skip_neib;
+    bool alreadySwapped;
+    std::vector<int> neib;
+    std::vector<int> neibTria;
+    Vertex(double x, double y, bool skip_neib = false) : x(x), y(y), remove(false), skip_neib(skip_neib), alreadySwapped(false) { }
+    Vertex() : remove(false), skip_neib(false), alreadySwapped(false) { }
+    void move(double xx, double yy) { x = xx; y = yy; }
 };
 
-struct YCoord {
-    std::vector<Point> &pts;
-    YCoord(std::vector<Point> &pts) : pts(pts) { }
-    double &operator[](int i) { return pts[i].y; }
-    const double &operator[](int i) const { return pts[i].y; }
+struct Triangle {
+    int v1, v2, v3;
+    int label;
+    bool remove;
+    Triangle(int v1, int v2, int v3, int lab) : v1(v1), v2(v2), v3(v3), label(lab), remove(false) { }
+    Triangle() : remove(false) { }
+};
+
+struct Edge {
+    int v1, v2;
+    int label;
+    Edge(int v1, int v2, int label)
+        : v1(v1), v2(v2), label(label)
+    { }
 };
 
 struct Mesh {
-    Region &reg;
-
-    int     nSmooth;
-    int     nRegion,nRLine,iRLine; /**/
-    int     **boundVert;
-    int     *nVert,*region,*bCut;
-
-    std::vector<Point> pts;
+    std::vector<std::pair<int, int> > seg;
+    std::vector<Vertex> pts;
     std::vector<Triangle> tri;
 
     std::vector<int> vb;
@@ -39,8 +45,8 @@ struct Mesh {
     double angle( int v1, int v2, int v ) const;
     void test_quality();
     void smoothing();
-    void delPoint(int n);
-    void changePoint(int v1, int v2);
+    void delVertex(int n);
+    void changeVertex(int v1, int v2);
     void delTria(int n);
     void changeTria(int iTria, int v1, int v2, int v3);
     void sortNeigbor(int iVert);
@@ -48,23 +54,17 @@ struct Mesh {
     void calcNeigbor();
     void calcEdge();
     void pack();
-    void deletePoint();
-    void mergePoint();
-    void splitPoint();
+    void deleteVertex();
+    void mergeVertex();
+    void splitVertex();
     void swapEdge();
-    void regularity(bool Regul);
-
-    XCoord x;
-    YCoord y;
+    void optimize(bool topological, int nSmooth);
 public:
-    const bool FAF;
-    Mesh(Region &reg, const bool FAF) : reg(reg), x(pts), y(pts), FAF(FAF) { }
-    Mesh();
+    Mesh() { }
     /* exported  function  function */
     int lastpoint() const { return (int)pts.size() - 1; }
-    void init( void );
-    void addPoint(double x, double y, bool skip_neib = false);
-    void addTria( int v1, int v2, int v3, int lab );
-    void outMesh( void ) const;
+    void addVertex(double x, double y, bool skip_neib = false);
+    void addTria(int v1, int v2, int v3, int lab);
+    void saveVtk(const std::string &fn);
 };
 #endif

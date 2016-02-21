@@ -1,18 +1,48 @@
 #ifndef H_TREE2_MESH2D
 #define H_TREE2_MESH2D
 
-#include "struct.h"
-
 #include <vector>
 
 class Mesh;
 class Triangulation;
 
-struct Tree {
-    PStrucNode2d root;            /*  root  of  the  quadtree  */
+typedef struct Face {
+    int     v1,v2;     /**/
+    int     f;          /* number  of  face       */
+    double  x,y,s;    /**/
+} *PFace;
 
-    std::vector<PStrucFace2> faces;
-    std::vector<PStrucFace2> vicinityFaces;
+typedef struct _MtEC {
+    PFace  face;
+    struct _MtEC *next;
+} entrychain;
+
+typedef struct _MtSN2{
+    int           entrycount;
+    entrychain    *firstentry;
+    struct _MtSN2 *parent;
+    struct _MtSN2 *nodelist[4];
+} Node2d;
+typedef  Node2d  *PNode2d;
+
+typedef struct {
+    int           flag;
+    union {
+        PFace faceNode;
+        int v;
+    } u;
+} Node2;
+typedef  Node2  *PNode2;
+
+
+typedef  PNode2  List2[4];
+typedef  List2   *PList2;
+
+struct Tree {
+    PNode2d root;            /*  root  of  the  quadtree  */
+
+    std::vector<PFace> faces;
+    std::vector<PFace> vicinityFaces;
 
     double       xVicinity,yVicinity;   /*  center  of  vicinity */
     double       sVicinity;       /*  size  of  vicinity */
@@ -21,19 +51,17 @@ struct Tree {
     double       xc,yc,side;      /*  global  for  recursive  remove  &  insert  function  */
     double       x,y;             /*  global  for  recursive  remove  &  insert  function  */
 
-    void addFaceArray(PStrucFace2 face);
+    void addFaceArray(PFace face);
     void remFaceArray(int face);
     int  sectQuad() const;
-    void vicinityFacesRec(PStrucNode2d node);
+    void vicinityFacesRec(PNode2d node);
 public:
     Tree();
     ~Tree();
     static int direction(double x,double y,double xc,double yc);
     static void center(double *x,double *y,double side,int d);
-    static double distance(double x,double y,double xc,double yc);
-    static double distanceS(double x,double y,double xc,double yc);
-    PStrucFace2 addFace(const Mesh &mesh, int v1, int v2, int twin);
-    void remFace(PStrucFace2  face);
+    PFace addFace(const Mesh &mesh, int v1, int v2);
+    void remFace(PFace  face);
     void buildVicinityFaces(double x, double y, double size);
 
     friend class Triangulation;

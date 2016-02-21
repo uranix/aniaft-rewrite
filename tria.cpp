@@ -1,27 +1,26 @@
 #include <cmath>
 #include <cstdlib>
 
-#include "region.h"
+#include <iostream>
+
 #include "tria.h"
-#include "user.h"
+#include "metric.h"
+#include "boundary.h"
 
 #include <map>
 
 #define SHOWPROGRESS 0
 
-extern Mesh mesh;
-extern Tree tree;
-
 double Triangulation::dist(int  a, int b) const {
-    const Point &pa = mesh.pts[a];
-    const Point &pb = mesh.pts[b];
+    const Vertex &pa = mesh.pts[a];
+    const Vertex &pb = mesh.pts[b];
     return std::sqrt((pa.x - pb.x)*(pa.x - pb.x) + (pa.y - pb.y)*(pa.y - pb.y));
 }
 
 double Triangulation::func_q(int a, int b, int c) const {
-    const Point &pa = mesh.pts[a];
-    const Point &pb = mesh.pts[b];
-    const Point &pc = mesh.pts[c];
+    const Vertex &pa = mesh.pts[a];
+    const Vertex &pb = mesh.pts[b];
+    const Vertex &pc = mesh.pts[c];
     const double S = (
             pb.x*pa.y - pa.x*pb.y +
             pc.x*(pb.y-pa.y) +
@@ -35,9 +34,9 @@ double Triangulation::func_q(int a, int b, int c) const {
 }
 
 void Triangulation::func_xy(int c, int a, int b, double dx[2], double delta) const {
-    const Point &pa = mesh.pts[a];
-    const Point &pb = mesh.pts[b];
-    const Point &pc = mesh.pts[c];
+    const Vertex &pa = mesh.pts[a];
+    const Vertex &pb = mesh.pts[b];
+    const Vertex &pc = mesh.pts[c];
     const double S = (
             pb.x*pa.y - pa.x*pb.y +
             pc.x*(pb.y-pa.y) +
@@ -79,15 +78,15 @@ static double orient2d(double a1, double a2, double b1, double b2, double c1, do
 }
 
 double Triangulation::det2i3(int v1, int v2, int v3) const {
-    const Point &p1 = mesh.pts[v1];
-    const Point &p2 = mesh.pts[v2];
-    const Point &p3 = mesh.pts[v3];
+    const Vertex &p1 = mesh.pts[v1];
+    const Vertex &p2 = mesh.pts[v2];
+    const Vertex &p3 = mesh.pts[v3];
     return orient2d(p1.x, p1.y, p2.x, p2.y, p3.x, p3.y);
 }
 
 int Triangulation::idet2i3(int v1, int v2, int v3) const {
     double d = det2i3(v2, v1, v3);
-    if (d > 1e-16) 
+    if (d >  1e-16)
         return +1;
     if (d < -1e-16)
         return -1;
@@ -116,7 +115,7 @@ int Triangulation::intsect(int a, int b, int c, int u, int v) const {
     return  1;
 }
 
-int Triangulation::check(PStrucFace2 e, int pn) {
+int Triangulation::check(PFace e, int pn) {
     int v1, v2, p1, p2;
 
     intedge = NULL;
@@ -128,7 +127,7 @@ int Triangulation::check(PStrucFace2 e, int pn) {
         return 1;
     }
 
-    for (const PStrucFace2 face : tree.vicinityFaces) {
+    for (const PFace face : tree.vicinityFaces) {
         p1 = face->v1;
         p2 = face->v2;
         if (intsect(v1, v2, pn, p1, p2)) {
@@ -139,13 +138,13 @@ int Triangulation::check(PStrucFace2 e, int pn) {
     return 0;
 }
 
-double Triangulation::height(PStrucFace2 e) const {
+double Triangulation::height(PFace e) const {
     int v0 = e->v1;
     int v1 = e->v2;
 
-    const Point &np = mesh.pts[new_vert];
-    const Point &p0 = mesh.pts[v0];
-    const Point &p1 = mesh.pts[v1];
+    const Vertex &np = mesh.pts[new_vert];
+    const Vertex &p0 = mesh.pts[v0];
+    const Vertex &p1 = mesh.pts[v1];
     double x  = np.x;
     double y  = np.y;
     double x0 = p0.x;
@@ -191,7 +190,7 @@ struct BestCandidates {
 };
 
 // called from newTria
-int Triangulation::new_point(PStrucFace2 e) {
+int Triangulation::new_point(PFace e) {
     int nchk, chk[CND_MAX];
 
     int v1 = e->v1;
@@ -212,33 +211,27 @@ int Triangulation::new_point(PStrucFace2 e) {
     b /= p;
     double r = p / 2.0;
 
-    double x, y;
+    double x = 0.5 * (x1 + x2) + a * 0.3 * p;
+    double y = 0.5 * (y1 + y2) + b * 0.3 * p;
+    p = sizeFace(x, y);
+    if (p*p-r*r < p*p*3.0/4.0)
+        p = std::sqrt(r*r + p*p*3.0/4.0);
 
-    if (!mesh.FAF) {
-        x = 0.5 * (x1 + x2) + a * 0.3 * p;
-        y = 0.5 * (y1 + y2) + b * 0.3 * p;
-        p = sizeFace(x, y);
-        if (p*p-r*r < p*p*3.0/4.0)
-            p = std::sqrt(r*r + p*p*3.0/4.0);
-    } else {
-        const double COARSEFACTOR = 1.5;
-        p = COARSEFACTOR * std::sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
-    }
     if (p < 1.1*r)
         p = 1.1*r;
 
     x = 0.5 * (x1 + x2) + a * std::sqrt(p*p-r*r);
     y = 0.5 * (y1 + y2) + b * std::sqrt(p*p-r*r);
 
-    mesh.addPoint(x, y);
-    new_vert = mesh.pts.size() - 1;
+    mesh.addVertex(x, y);
+    new_vert = mesh.lastpoint();
 
     /*____________________ TEST __________ TEST ____________________________*/
 
-    double radius = Tree::distance(x, y, x1, y1);
+    double radius = Metric::distance(x, y, x1, y1);
 
     r = radius * 1.0001220703125; // 8193. / 8192
-    double rmin = (beta*r + minrho + std::sqrt((beta*r - minrho)*(beta*r - minrho) + alpha))/2.0;
+    double rmin = 0.5 * r;
     r = radius * 2.0;
 
     tree.buildVicinityFaces(x, y, r);
@@ -251,7 +244,7 @@ int Triangulation::new_point(PStrucFace2 e) {
     BestCandidates cand;
     cand.insert(new_vert, func_q(v1, v2, new_vert));
 
-    for (const PStrucFace2 face : tree.vicinityFaces) {
+    for (const PFace face : tree.vicinityFaces) {
         double h = height(face);
         if (h < 0.5*hc) {
             dirty++;
@@ -262,7 +255,7 @@ int Triangulation::new_point(PStrucFace2 e) {
                 continue;
             if (idet2i3(v1, v2, pn) != 1)
                 continue;
-            r = Tree::distance(mesh.pts[pn].x, mesh.pts[pn].y, x, y);
+            r = Metric::distance(mesh.pts[pn].x, mesh.pts[pn].y, x, y);
             if (r < rv) {
                 rv = r;
                 neari = pn;
@@ -313,7 +306,7 @@ int Triangulation::new_point(PStrucFace2 e) {
 int Triangulation::chknadd(int v1, int v2) {
     int p1, p2;
 
-    for (const PStrucFace2 face : tree.vicinityFaces) {
+    for (const PFace face : tree.vicinityFaces) {
         p1 = face->v1;
         p2 = face->v2;
         if ((p1==v2) && (p2==v1)) {
@@ -321,14 +314,14 @@ int Triangulation::chknadd(int v1, int v2) {
             return 1;
         }
     }
-    tree.addFace(mesh, v1, v2, 0);
+    tree.addFace(mesh, v1, v2);
     return 0;
 }
 
 int Triangulation::newTria(int lab) {
     int nn;
     int v1, v2;
-    PStrucFace2 e1;
+    PFace e1;
 
     e1 = tree.faces.front();
     v1 = e1->v1;
@@ -337,7 +330,7 @@ int Triangulation::newTria(int lab) {
     if (nn != 0)
         return nn;
 
-    if (new_vert != (int)mesh.pts.size() - 1)
+    if (new_vert != mesh.lastpoint())
         mesh.pts.pop_back();
 
     todelete[0] = e1;
@@ -351,67 +344,108 @@ int Triangulation::newTria(int lab) {
     return 0;
 }
 
-extern int    nVRTglobal;
-extern int    nTRIglobal;
+void Triangulation::meshBoundary() {
+    for (const auto &v : bnd.corners) {
+        const coord &c = bnd.bb.toUnit()(v);
+        mesh.addVertex(c.x, c.y, true);
+    }
+    mesh.seg.resize(bnd.segments.size());
+    for (size_t k = 0; k < bnd.segments.size(); k++) {
+        const Segment &s = *bnd.segments[k];
 
-int Triangulation::makeTria() {
-    int i = 0, err = 0, smooth = 0;
+        const int n = 100;
+        const double dt = (s.tmax - s.tmin) / n;
+        std::vector<double> nsteps;
+        nsteps.push_back(0);
+        for (int i = 0; i < n; i++) {
+            double nprev = nsteps.back();
+            double ti = s.tmin + i * dt;
+            double tn = ti + dt;
+            double dn = Metric::distance(s(tn), s(ti)) / metric.size(s(0.5 * (ti + tn)));
+            nsteps.push_back(nprev + dn);
+        }
+        double adjust = std::ceil(nsteps.back()) / nsteps.back();
+        for (double &v : nsteps)
+            v *= adjust;
 
-    initRegion();
+        double nmax = nsteps.back() - .5;
 
-    for (i = 1; i <= mesh.nRegion; i++) {
-        int nRPointPrev = mesh.pts.size();
-        minrho = dist(tree.faces[0]->v1, tree.faces[0]->v2);
+        mesh.seg[k].first = mesh.pts.size();
 
-        for (const auto &f : tree.faces)
-            if (minrho > dist(f->v1, f->v2))
-                minrho = dist(f->v1, f->v2);
+        double p = 1;
+        for (int i = 0; i < n; i++) {
+            // nsteps[i] < p <= nsteps[i+1]
+            while (nsteps[i] < p && nsteps[i+1] >= p) {
+                double t = s.tmin + (i + (p - nsteps[i]) / (nsteps[i+1] - nsteps[i])) * dt;
+                const coord &c = bnd.bb.toUnit()(s(t));
+                if (p < nmax)
+                    mesh.addVertex(c.x, c.y, true);
+                p += 1;
+            }
+        }
 
-        if (mesh.FAF)
-            minrho *= 0.95;
+        mesh.seg[k].second = mesh.pts.size();
+    }
+}
+
+void Triangulation::generateInitialFront(int regid) {
+    const auto &reg = bnd.regions[regid];
+
+    for (const auto &l : reg) {
+        std::vector<int> seq;
+        seq.push_back(l.vBeg(bnd.segments));
+        std::pair<int, int> meshedSeg = mesh.seg[l.segment];
+        if (!l.reversed)
+            for (int i = meshedSeg.first; i < meshedSeg.second; i++)
+                seq.push_back(i);
         else
-            minrho = 0.0;
-        beta = 0.5;
-        minrho *= beta;
-        alpha = 2.0*minrho*(1.0-beta)/beta;
-        alpha *= alpha;
+            for (int i = meshedSeg.second; i > meshedSeg.first; i--)
+                seq.push_back(i-1);
+        seq.push_back(l.vEnd(bnd.segments));
+
+        for (size_t j = 0; j < seq.size() - 1; j++)
+            tree.addFace(mesh, seq[j], seq[j+1]);
+    }
+}
+
+int Triangulation::generate(bool topological, int nSmooth) {
+    int err = 0, smooth = 0;
+
+    meshBoundary();
+
+    for (size_t i = 0; i < bnd.regions.size(); i++) {
+        int nRVertexPrev = mesh.pts.size();
+
+        generateInitialFront(i);
 
         while (!tree.faces.empty()) {
             err = newTria(i);
             if (err)
                 break;
             if (SHOWPROGRESS && (mesh.tri.size() % 100 == 0)) {
-                printf("Number of Point = %lu Number of Tria = %lu\n", mesh.pts.size(), mesh.tri.size());
+                printf("Number of Vertex = %lu Number of Tria = %lu\n", mesh.pts.size(), mesh.tri.size());
                 fflush(stdout);
             }
         }
 
         if (err)
             break;
+
         if (SHOWPROGRESS)
             printf("\n");
+
         fill_eadj();
         fill_tadj();
 
-        smooth += opt_func(nRPointPrev);
+        smooth += opt_func(nRVertexPrev);
 
-        if (i != mesh.nRegion) {
-            initAddRegion(i + 1);
-        }
+        printf("\nRESULT after meshing reg = %lu:  %5lu     %5lu    \n", i, mesh.pts.size(), mesh.tri.size());
     }
-
-    printf("\nRESULT :  %5lu     %5lu    \n", mesh.pts.size(), mesh.tri.size());
 
     if (!smooth)
-        mesh.regularity(true);
+        mesh.optimize(topological, nSmooth);
 
     mesh.test_quality();
-    mesh.outMesh();
-
-    if (!err) {
-        nVRTglobal = mesh.pts.size();
-        nTRIglobal = mesh.tri.size();
-    }
 
     return err;
 }
@@ -421,10 +455,9 @@ void Triangulation::fill_eadj() {
     eadj.resize(mesh.pts.size());
 
     for (const auto t : mesh.tri) {
-        int a, b, c;
-        a = t.v1;
-        b = t.v2;
-        c = t.v3;
+        int a = t.v1;
+        int b = t.v2;
+        int c = t.v3;
 
         eadj[a].insert(b);
         eadj[a].insert(c);
@@ -486,9 +519,8 @@ int Triangulation::opt_func(int nfixed) {
     ds /= ps.size();
     //printf("ds=%lf\n", ds);
 
-    typedef double vertex[2];
-    std::vector<vertex> dx(ps.size());
-    std::vector<Point> bkp(ps.size());
+    std::vector<coord> dx(ps.size());
+    std::vector<Vertex> bkp(ps.size());
 
     for (size_t j = 0; j < ps.size(); j++) {
         int p = ps[j];
@@ -520,16 +552,16 @@ int Triangulation::opt_func(int nfixed) {
                 x[0] *= r;
                 x[1] *= r;
             }
-            dx[j][0] = x[0];
-            dx[j][1] = x[1];
+            dx[j].x = x[0];
+            dx[j].y = x[1];
             r = std::sqrt(x[0]*x[0] + x[1]*x[1]);
             if (rs < r)
                 rs = r;
         }
         for (size_t j = 0; j < ps.size(); j++) {
             int p = ps[j];
-            mesh.pts[p].x += d*dx[j][0];
-            mesh.pts[p].y += d*dx[j][1];
+            mesh.pts[p].x += d*dx[j].x;
+            mesh.pts[p].y += d*dx[j].y;
         }
         if (SHOWPROGRESS) {
             printf(" Smoothing %d%%\n", s+1);

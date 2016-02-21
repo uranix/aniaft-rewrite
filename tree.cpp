@@ -4,9 +4,10 @@
 
 #include "tree.h"
 #include "mesh.h"
+#include "metric.h"
 
 Tree::Tree() {
-    root = new StrucNode2d;
+    root = new Node2d;
     root->entrycount = 0;
     root->parent = 0;
     root->nodelist[0] = 0;
@@ -53,17 +54,9 @@ void Tree::center(double *x, double *y, double side, int dir) {
     return;
 }
 
-double Tree::distance(double x,double y,double xc,double yc) {
-    return std::sqrt(distanceS(x, y, xc, yc));
-}
-
-double Tree::distanceS(double x,double y,double xc,double yc) {
-    return (x-xc)*(x-xc)+(y-yc)*(y-yc);
-}
-
-void Tree::addFaceArray(PStrucFace2 face) {
+void Tree::addFaceArray(PFace face) {
     int son,fath,i;
-    PStrucFace2 cface;
+    PFace cface;
 
     faces.push_back(face);
     face->f = faces.size() - 1;
@@ -87,7 +80,7 @@ aaa:
 
 void Tree::remFaceArray(int fath) {
     int son1,son2,i;
-    PStrucFace2 face;
+    PFace face;
     if((fath >= (int)faces.size()) || (fath < 0))  {
         fprintf(stderr, "aniAFT: delete face: tree is empty\n");
         return;
@@ -132,44 +125,28 @@ aaa:i = 0;
     }
 }
 
-PStrucFace2 Tree::addFace(const Mesh &mesh, int v1, int v2, int twin) {
+PFace Tree::addFace(const Mesh &mesh, int v1, int v2) {
     int         i,d;
     double      x1=-1.0,y1=-1.0;
     double      xc=0.5,yc=0.5,side=0.5;
-    PStrucFace2 face;
-    PStrucNode2d old_node,node;
+    PFace face;
+    PNode2d old_node,node;
     entrychain  *faceentry, *new_faceentry;
 
     node = root;
-    face = new StrucFace2;
+    face = new Face;
     face->v1 = v1;
     face->v2 = v2;
 
-    const Point &p1 = mesh.pts[v1];
-    const Point &p2 = mesh.pts[v2];
-/*
-    const double p1x = mesh.x[v1];
-    const double p1y = mesh.y[v1];
-    const double p2x = mesh.x[v2];
-    const double p2y = mesh.y[v2];
-*/
-    double x, y;
+    const Vertex &p1 = mesh.pts[v1];
+    const Vertex &p2 = mesh.pts[v2];
 
-    if(twin == 0){
-        x = (p1.x + p2.x)/2.;
-        y = (p1.y + p2.y)/2.;
- //       x = (p1x + p2x)/2.;
- //       y = (p1y + p2y)/2.;
-    } else {
-        x = 0.49*p1.x + 0.51*p2.x;
-        y = 0.49*p1.y + 0.51*p2.y;
-  //      x = 0.49*p1x + 0.51*p2x;
-  //      y = 0.49*p1y + 0.51*p2y;
-    }
+    double x = (p1.x + p2.x)/2.;
+    double y = (p1.y + p2.y)/2.;
+
     face->x=x;
     face->y=y;
-    face->s = distance(p1.x, p1.y, p2.x, p2.y);
-//    face->s = distance(p1x, p1y, p2x, p2y);
+    face->s = Metric::distance(p1.x, p1.y, p2.x, p2.y);
 
     if ((x<0.)||(x>1.)||(y<0.)||(y>1)) {
         printf("x= %lf,  y= %lf ", x, y);
@@ -182,7 +159,7 @@ PStrucFace2 Tree::addFace(const Mesh &mesh, int v1, int v2, int twin) {
         old_node = node;
         node = node->nodelist[d];
         if (!node) {
-            node = new StrucNode2d;
+            node = new Node2d;
             for (i=0;i<4;i++)
                 node->nodelist[i] = 0;
             node->parent = old_node;
@@ -212,11 +189,11 @@ PStrucFace2 Tree::addFace(const Mesh &mesh, int v1, int v2, int twin) {
     return face;
 }
 
-void Tree::remFace(PStrucFace2 face) {
+void Tree::remFace(PFace face) {
     int         i,d;
     double      x,y;
     double      xc=0.5,yc=0.5,side=0.5;
-    PStrucNode2d node, old_node;
+    PNode2d node, old_node;
     entrychain  *faceentry, *old_faceentry;
 
     remFaceArray(face->f);
@@ -280,7 +257,7 @@ int Tree::sectQuad() const {
     return 1;
 }
 
-void Tree::vicinityFacesRec(PStrucNode2d node) {
+void Tree::vicinityFacesRec(PNode2d node) {
     /*  NEED    xc=0.5; yc=0.5; side=0.5;
         vicinityFaces empty
         sVicinity  xVicinity yVicinity
@@ -295,7 +272,7 @@ void Tree::vicinityFacesRec(PStrucNode2d node) {
     for (faceentry = node->firstentry;faceentry;faceentry=faceentry->next) {
         x = faceentry->face->x;
         y = faceentry->face->y;
-        s = distance(x,y,xVicinity,yVicinity)-0.5*faceentry->face->s;
+        s = Metric::distance(x,y,xVicinity,yVicinity)-0.5*faceentry->face->s;
         if (s<=sVicinity)
             vicinityFaces.push_back(faceentry->face);
     }

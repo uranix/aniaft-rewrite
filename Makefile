@@ -1,20 +1,13 @@
-# CXX=clang++ -ferror-limit=500
+# CXX=clang++ -ferror-limit=5
 CXX=g++ -fmax-errors=5
-CXXFLAGS=-std=c++11 -O3 -g -Wall
+CXXFLAGS=-std=c++11 -O0 -g -Wall
 
-F77=gcc
-F77FLAGS=-O3 -g -Wall
-
-CXXSRC=tree.cpp aft2d.cpp refine.cpp mesh.cpp \
-	tria.cpp user.cpp mesh.cpp region.cpp
-
-CSRC=main_boundary_wing.c demo.c crv_model.c
+CXXSRC=tree.cpp main.cpp mesh.cpp tria.cpp
 
 CXXOBJ=${CXXSRC:.cpp=.o}
-COBJ=${CSRC:.c=.o}
 
-all: ${COBJ} ${CXXOBJ} 
-	c++ -o main $^ -lm -lf2c
+all: ${CXXOBJ} 
+	c++ -o main $^ -lm
 
 clean:
 	rm -f *.o main
