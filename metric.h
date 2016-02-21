@@ -8,7 +8,7 @@ struct coord {
     double x, y;
     coord() { }
     coord(double x, double y) : x(x), y(y) { }
-    std::string str() const {
+    std::string to_str() const {
         return "{" + std::to_string(x) + ", " + std::to_string(y) + "}";
     }
 };
@@ -21,13 +21,14 @@ struct Metric {
         return std::sqrt((x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2));
     }
     virtual double size(const coord &p) const = 0;
+    virtual ~Metric() { }
 };
 
 struct UniformMetric : public Metric {
     const double h;
     UniformMetric(double h) : h(h) { }
 
-    double size(const coord &) const { return h; }
+    double size(const coord &) const override { return h; }
 };
 
 #endif

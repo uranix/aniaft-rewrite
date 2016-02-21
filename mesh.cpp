@@ -17,86 +17,6 @@ void Mesh::addTria(int v1, int v2, int v3, int lab) {
     tri.push_back(Triangle(v1, v2, v3, lab));
 }
 
-double Mesh::angle( int v1, int v2, int v ) const {
-    double x1,x2,y1,y2,xx,yy;
-
-    x1 = pts[v1].x;
-    y1 = pts[v1].y;
-    x2 = pts[v2].x;
-    y2 = pts[v2].y;
-
-    xx = pts[v].x;
-    yy = pts[v].y;
-
-    x2 -= xx;
-    x1 -= xx;
-    y1 -= yy;
-    y2 -= yy;
-
-    double p = x1*x2+y1*y2;
-    p /= sqrt((x1*x1+y1*y1) * (x2*x2+y2*y2));
-
-    return std::acos(p);
-}
-
-void Mesh::test_quality() {
-    double da=M_PI/6;
-    double min_angle=3.0,max_angle=0.0;
-
-    int na[6] = {0, 0, 0, 0, 0, 0};
-
-    for (const auto &tr : tri) {
-        int p1=tr.v1;
-        int p2=tr.v2;
-        int p3=tr.v3;
-
-        double a1=angle(p2,p3,p1);
-        double a2=angle(p3,p1,p2);
-        double a3=angle(p1,p2,p3);
-
-        for(int j = 0; j < 6; j++){
-            if ((j*da<a1) && (a1<=j*da+da))
-                na[j]++;
-            if ((j*da<a2) && (a2<=j*da+da))
-                na[j]++;
-            if ((j*da<a3) && (a3<=j*da+da))
-                na[j]++;
-            if (a1>max_angle)
-                max_angle=a1;
-            if (a1<min_angle)
-                min_angle=a1;
-            if (a2>max_angle)
-                max_angle=a2;
-            if (a2<min_angle)
-                min_angle=a2;
-            if (a3>max_angle)
-                max_angle=a3;
-            if (a3<min_angle)
-                min_angle=a3;
-        }
-    }
-/*
-    printf("Max edge = %lf, min edge = %lf\n", max, min);
-    printf("Angular info, min = %lf, max = %lf\n", min_angle * 180 / M_PI, max_angle * 180 / M_PI);
-    for (int j = 0; j < 6; j++)
-        printf("j = %d nA = %d perc = %lf\n", j, na[j], 100. * na[j] / 3 / tri.size());
-*/
-    calcNeigTria();
-    calcNeigbor();
-
-    std::map<size_t, int> n;
-    for (const auto p : pts)
-        n[p.neib.size()]++;
-
-    printf("Neigbor number for nP = %7lu nT = %7lu\n", pts.size(), tri.size());
-    for (const auto &kv : n) {
-        size_t i = kv.first;
-        int ni = kv.second;
-        printf("neig = %lu nVertex =%6d perc = %5.2lf%%  perc = %5.2lf%%\n", i, ni,
-                100. * ni/pts.size(), 100. * ni/(pts.size()-n[0]));
-    }
-}
-
 void Mesh::smoothing() {
     for (Vertex &p : pts) {
         double xx=0.;
@@ -316,7 +236,6 @@ void Mesh::deleteVertex() {
             int n4 = pts[p.neib[3]].neib.size() - 7;
             int sum  = (n1+1)*(n1+1) + (n3+1)*(n3+1) + n2*n2 + n4*n4;
             int swap = (n2+1)*(n2+1) + (n4+1)*(n4+1) + n1*n1 + n3*n3;
-            /*printf("swap %4d%4d n(%4d%4d%4d%4d) \n",sum,swap,n1,n3,n2,n4);*/
             if (swap < sum) {
                 changeTria(p.neibTria[0], p.neib[1], p.neib[0], p.neib[3]);
                 changeTria(p.neibTria[1], p.neib[3], p.neib[2], p.neib[1]);
@@ -403,20 +322,20 @@ void Mesh::splitVertex() {
                 lab = tr.label;
 
             if (lab != tr.label)
-                fprintf(stderr, "aniAFT: different materials inside region\n");
+                throw std::logic_error("aniAFT: different materials inside region");
             changeTria(p.neibTria[j], p.neib[j+1], p.neib[j], i);
         }
         for(int j = n1; j < n1 + n2 - 1; j++) {
             Triangle &tr = tri[p.neibTria[j]];
             if (lab != tr.label)
-                fprintf(stderr, "aniAFT: different materials inside region\n");
+                throw std::logic_error("aniAFT: different materials inside region");
             changeTria(p.neibTria[j], p.neib[j+1], p.neib[j], vert);
         }
         {
             int it = p.neibTria[n1 - 1];
             Triangle &tr = tri[it];
             if (lab != tr.label)
-                fprintf(stderr, "aniAFT: different materials inside region\n");
+                throw std::logic_error("aniAFT: different materials inside region");
 
             changeTria(it, p.neib[n1-1], i, vert);
         }
@@ -424,13 +343,12 @@ void Mesh::splitVertex() {
             int it = p.neibTria[n1 + n2 - 1];
             Triangle &tr = tri[it];
             if (lab != tr.label)
-                fprintf(stderr, "aniAFT: different materials inside region\n");
+                throw std::logic_error("aniAFT: different materials inside region");
             changeTria(it, p.neib[n1], p.neib[n1-1], vert);
         }
         addTria(p.neib[n1+n2-1], vert, i, lab);
         addTria(p.neib[n1+n2-1], i, p.neib[0],lab);
     }
-    /* pack(); */
     calcNeigTria();
     calcNeigbor();
 
@@ -477,7 +395,7 @@ void Mesh::swapEdge() {
             continue;
         int sum = nb*nb + ne*ne + n1*n1 + n2*n2;
         int swap = (nb-1)*(nb-1) + (ne-1)*(ne-1) + (n1+1)*(n1+1) + (n2+1)*(n2+1);
-        /*printf("swap %4d%4d v(%4d%4d%4d%4d) n(%4d%4d%4d%4d) \n",sum,swap,vb,ve,v1,v2,nb,ne,n1,n2);*/
+
         if (swap < sum) {
             pts[vb].neib.pop_back();
             pts[ve].neib.pop_back();
@@ -502,34 +420,24 @@ void Mesh::optimize(bool topological, int nSmooth) {
     if (topological) {
         calcNeigTria();
         calcNeigbor();
-        test_quality();
 
         for (int i = 0; i < 5; i++)
             smoothing();
-
-        test_quality();
 
         deleteVertex();
         for(i=0;i<5;i++)
             smoothing();
 
-        test_quality();
-
         mergeVertex();
         mergeVertex();
         mergeVertex();
         for(i=0;i<5;i++)
             smoothing();
 
-        test_quality();
-
         splitVertex();
         splitVertex();
         splitVertex();
 
-        test_quality();
-
-        printf("Swap\n");
         swapEdge();
         for(i=0;i<5;i++)
             smoothing();
@@ -540,8 +448,6 @@ void Mesh::optimize(bool topological, int nSmooth) {
         for(i=0;i<5;i++)
             smoothing();
         swapEdge();
-
-        test_quality();
     }
 
     for(i=0;i<nSmooth;i++)

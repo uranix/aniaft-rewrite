@@ -9,8 +9,6 @@
 
 #include <map>
 
-#define SHOWPROGRESS 0
-
 double Triangulation::dist(int  a, int b) const {
     const Vertex &pa = mesh.pts[a];
     const Vertex &pb = mesh.pts[b];
@@ -123,7 +121,6 @@ int Triangulation::check(PFace e, int pn) {
     v2 = e->v2;
 
     if (idet2i3(v1, v2, pn) != 1) {
-        //fprintf(stderr, "\ninverted? %d (%d %d %d)\n", idet2i3(v1, v2, pn), v1, v2, pn);
         return 1;
     }
 
@@ -248,7 +245,6 @@ int Triangulation::new_point(PFace e) {
         double h = height(face);
         if (h < 0.5*hc) {
             dirty++;
-//            printf("dirty: %lf, %lf\n", hc, h);
         }
         for (const int pn : { face->v1, face->v2 } ) {
             if ((pn==v1) || (pn==v2))
@@ -422,30 +418,19 @@ int Triangulation::generate(bool topological, int nSmooth) {
             err = newTria(i);
             if (err)
                 break;
-            if (SHOWPROGRESS && (mesh.tri.size() % 100 == 0)) {
-                printf("Number of Vertex = %lu Number of Tria = %lu\n", mesh.pts.size(), mesh.tri.size());
-                fflush(stdout);
-            }
         }
 
         if (err)
             break;
 
-        if (SHOWPROGRESS)
-            printf("\n");
-
         fill_eadj();
         fill_tadj();
 
         smooth += opt_func(nRVertexPrev);
-
-        printf("\nRESULT after meshing reg = %lu:  %5lu     %5lu    \n", i, mesh.pts.size(), mesh.tri.size());
     }
 
     if (!smooth)
         mesh.optimize(topological, nSmooth);
-
-    mesh.test_quality();
 
     return err;
 }
@@ -517,7 +502,6 @@ int Triangulation::opt_func(int nfixed) {
         return 0;
 
     ds /= ps.size();
-    //printf("ds=%lf\n", ds);
 
     std::vector<coord> dx(ps.size());
     std::vector<Vertex> bkp(ps.size());
@@ -563,13 +547,7 @@ int Triangulation::opt_func(int nfixed) {
             mesh.pts[p].x += d*dx[j].x;
             mesh.pts[p].y += d*dx[j].y;
         }
-        if (SHOWPROGRESS) {
-            printf(" Smoothing %d%%\n", s+1);
-            fflush(stdout);
-        }
     }
-    if (SHOWPROGRESS)
-        printf(" Smoothing done\n");
 
     int s = 0;
     for (const auto &t : mesh.tri)

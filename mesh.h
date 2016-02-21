@@ -30,9 +30,12 @@ struct Edge {
     Edge(int v1, int v2, int label)
         : v1(v1), v2(v2), label(label)
     { }
+    Edge() { }
 };
 
-struct Mesh {
+class Triangulation;
+
+class Mesh {
     std::vector<std::pair<int, int> > seg;
     std::vector<Vertex> pts;
     std::vector<Triangle> tri;
@@ -42,8 +45,6 @@ struct Mesh {
     std::vector<int> tria1;
     std::vector<int> tria2;
 
-    double angle( int v1, int v2, int v ) const;
-    void test_quality();
     void smoothing();
     void delVertex(int n);
     void changeVertex(int v1, int v2);
@@ -66,5 +67,9 @@ public:
     void addVertex(double x, double y, bool skip_neib = false);
     void addTria(int v1, int v2, int v3, int lab);
     void saveVtk(const std::string &fn);
+
+    const Vertex &vert(size_t i) const { return pts[i]; }
+
+    friend class Triangulation;
 };
 #endif

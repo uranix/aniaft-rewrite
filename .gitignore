@@ -2,3 +2,4 @@
 main
 *.ps
 *.vtk
+build/

@@ -1,6 +1,6 @@
 #include <cmath>
 #include <cstdlib>
-#include <cstdio>
+#include <stdexcept>
 
 #include "tree.h"
 #include "mesh.h"
@@ -81,10 +81,8 @@ aaa:
 void Tree::remFaceArray(int fath) {
     int son1,son2,i;
     PFace face;
-    if((fath >= (int)faces.size()) || (fath < 0))  {
-        fprintf(stderr, "aniAFT: delete face: tree is empty\n");
-        return;
-    }
+    if((fath >= (int)faces.size()) || (fath < 0))
+        throw std::underflow_error("aniAFT: delete face: tree is empty");
 
     faces[fath] = faces.back();
     faces[fath]->f = fath;
@@ -138,8 +136,8 @@ PFace Tree::addFace(const Mesh &mesh, int v1, int v2) {
     face->v1 = v1;
     face->v2 = v2;
 
-    const Vertex &p1 = mesh.pts[v1];
-    const Vertex &p2 = mesh.pts[v2];
+    const Vertex &p1 = mesh.vert(v1);
+    const Vertex &p2 = mesh.vert(v2);
 
     double x = (p1.x + p2.x)/2.;
     double y = (p1.y + p2.y)/2.;
@@ -148,10 +146,9 @@ PFace Tree::addFace(const Mesh &mesh, int v1, int v2) {
     face->y=y;
     face->s = Metric::distance(p1.x, p1.y, p2.x, p2.y);
 
-    if ((x<0.)||(x>1.)||(y<0.)||(y>1)) {
-        printf("x= %lf,  y= %lf ", x, y);
-        fprintf(stderr, "aniAFT: out of bouding box (wrong orientation in input?)\n");
-    }
+    if ((x<0.)||(x>1.)||(y<0.)||(y>1))
+        throw std::logic_error("aniAFT: out of bouding box (wrong orientation in input?)");
+
     while (side>face->s) {
         d = direction(x,y,xc,yc);
         side *= 0.5;
@@ -172,10 +169,8 @@ PFace Tree::addFace(const Mesh &mesh, int v1, int v2) {
     for (i=0;i<node->entrycount;i++) {
         x1 = faceentry->face->x;
         y1 = faceentry->face->y;
-        if ((x1==x)&&(y1==y)&&(v1==faceentry->face->v1)&&(v2==faceentry->face->v2)) {
-            printf("x,  y:  %lf, %lf\nx1, y1: %lf, %lf\nv1:   %d, v2:   %d\n v1_f: %d, v2_f: %d\n", x, y, x1, y1, v1, v2, faceentry->face->v1, faceentry->face->v2);
-            fprintf(stderr, "aniAFT: dups in front (corrupted front?)\n");
-        }
+        if ((x1==x)&&(y1==y)&&(v1==faceentry->face->v1)&&(v2==faceentry->face->v2))
+            throw std::logic_error("aniAFT: dups in front (corrupted front?)");
         faceentry = faceentry->next;
     }
     faceentry = node->firstentry;
@@ -205,10 +200,8 @@ void Tree::remFace(PFace face) {
         side *= 0.5;
         center(&xc,&yc,side,d);
         node = node->nodelist[d];
-        if (!node) {
-            fprintf(stderr, "aniAFT: delete face: no such element\n");
-            return;
-        }
+        if (!node)
+            throw std::invalid_argument("aniAFT: delete face: no such element");
     }
     faceentry = node->firstentry;
     if (faceentry->face == face) {
@@ -227,8 +220,7 @@ void Tree::remFace(PFace face) {
             delete faceentry;
             node->entrycount--;
         } else {
-            fprintf(stderr, "aniAFT: delete face: no such element\n");
-            return;
+            throw std::invalid_argument("aniAFT: delete face: no such element\n");
         }
     }
     while ((node->entrycount==0)&&(!node->nodelist[0]&&!node->nodelist[1]&&

@@ -38,7 +38,7 @@ typedef  Node2  *PNode2;
 typedef  PNode2  List2[4];
 typedef  List2   *PList2;
 
-struct Tree {
+class Tree {
     PNode2d root;            /*  root  of  the  quadtree  */
 
     std::vector<PFace> faces;

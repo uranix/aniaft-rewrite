@@ -63,7 +63,7 @@ int main() {
     Triangulation tr(bnd, MyMetric());
 
     tr.generate();
-    tr.mesh.saveVtk("out.vtk");
+//    tr.mesh.saveVtk("out.vtk");
 
     return 0;
 }

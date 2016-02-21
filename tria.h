@@ -33,7 +33,7 @@ struct edge {
     }
 };
 
-struct Triangulation {
+class Triangulation {
     Mesh mesh;
     Tree tree;
     Boundary bnd;
@@ -102,7 +102,7 @@ public:
             seq.push_back(s.begCorner);
             std::pair<int, int> meshedSeg = mesh.seg[i];
             for (int j = meshedSeg.first; j < meshedSeg.second; j++)
-                seq.push_back(i);
+                seq.push_back(j);
             seq.push_back(s.endCorner);
             for (size_t j = 0; j < seq.size() - 1; j++)
                 ret.emplace_back(seq[j], seq[j+1], s.label);

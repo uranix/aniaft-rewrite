@@ -26,15 +26,16 @@ struct Segment {
 
     Segment(int begCorner, int endCorner, int label = 1, double tmin = 0, double tmax = 1)
         : begCorner(begCorner), endCorner(endCorner)
-        , tmin(tmin), tmax(tmax)
+        , tmin(tmin), tmax(tmax), label(label)
     { }
 
     virtual coord operator()(const double t) const = 0;
-    virtual std::string str() const {
+    virtual std::string to_str() const {
         return "Segment("
             + std::to_string(begCorner) + ", "
             + std::to_string(endCorner) + ")";
     }
+    virtual ~Segment() { }
 };
 
 struct Line : public Segment {
@@ -54,11 +55,10 @@ struct Line : public Segment {
             );
     }
 
-    std::string str() const override {
+    std::string to_str() const override {
         return "Line[{"
-            + p0.str() + ", "
-            + p1.str() + "}]";
-//            + std::to_string(begCorner) + ":" + std::to_string(endCorner) + ")";
+            + p0.to_str() + ", "
+            + p1.to_str() + "}]";
     }
 };
 
@@ -85,13 +85,12 @@ struct Bezier : public Segment {
             );
     }
 
-    std::string str() const override {
+    std::string to_str() const override {
         return "BezierCurve[{"
-            + p0.str() + ", "
-            + p1.str() + ", "
-            + p2.str() + ", "
-            + p3.str() + "}]";
-//            + std::to_string(begCorner) + ":" + std::to_string(endCorner) + ")";
+            + p0.to_str() + ", "
+            + p1.to_str() + ", "
+            + p2.to_str() + ", "
+            + p3.to_str() + "}]";
     }
 };
 
@@ -99,41 +98,16 @@ struct BoundingBox {
     bool initialized;
     double xmin, xmax, ymin, ymax;
     BoundingBox() : initialized(false) { }
-    void add(const coord &p) {
-        if (!initialized) {
-            initialized = true;
-            xmin = xmax = p.x;
-            ymin = ymax = p.y;
-            return;
-        }
-        if (p.x < xmin)
-            xmin = p.x;
-        if (p.x > xmax)
-            xmax = p.x;
-        if (p.y < ymin)
-            ymin = p.y;
-        if (p.y > ymax)
-            ymax = p.y;
-    }
-    Transformation toUnit() const {
-        double xlft = 1.1 * xmin - 0.1 * xmax;
-        double ybot = 1.1 * ymin - 0.1 * ymax;
-        double size = 1.2 * std::max(xmax - xmin, ymax - ymin);
-        return Transformation(
-                1. / size, -xlft / size, -ybot / size
-            );
-    }
-    Transformation fromUnit() const {
-        double xlft = 1.1 * xmin - 0.1 * xmax;
-        double ybot = 1.1 * ymin - 0.1 * ymax;
-        double size = 1.2 * std::max(xmax - xmin, ymax - ymin);
-        return Transformation(size, xlft, ybot);
-    }
+    void add(const coord &o);
+    Transformation toUnit() const;
+    Transformation fromUnit() const;
 };
 
 struct Link {
     int segment;
     bool reversed;
+
+    Link() { }
 
     Link(int segment, bool reversed)
         : segment(segment), reversed(reversed)
@@ -160,7 +134,6 @@ struct Boundary {
     std::vector<std::vector<Link> > regions;
 
     BoundingBox bb;
-
     Boundary(
             const std::vector<coord> corners,
             const std::vector<Segment *> segments,
@@ -172,60 +145,11 @@ struct Boundary {
         checkRegions();
         checkCorners();
     }
-
-    void computeBoundingBox() {
-        for (const Segment *s : segments) {
-            double dt = (s->tmax - s->tmin) / 100;
-            for (double t = s->tmin; t < s->tmax; t += dt)
-                bb.add((*s)(t));
-        }
-    }
-
-    bool checkCorner(int c, const coord &p) const {
-        double tol = 1e-8;
-        const auto transf = bb.toUnit();
-        const coord &p1 = transf(corners[c]);
-        const coord &p2 = transf(p);
-
-        return Metric::distance(p1.x, p1.y, p2.x, p2.y) < tol;
-    }
-
-    void checkCorners() const {
-        assert(bb.initialized);
-        for (const Segment *s : segments) {
-            bool ret;
-            ret = checkCorner(s->begCorner, (*s)(s->tmin));
-            if (!ret)
-                throw std::logic_error("The beginning of " + s->str() + " mismatch the corner point " + corners[s->begCorner].str());
-            ret = checkCorner(s->endCorner, (*s)(s->tmax));
-            if (!ret)
-                throw std::logic_error("The end of " + s->str() + " mismatch the corner point " + corners[s->endCorner].str());
-        }
-    }
-
-    void checkRegions() const {
-        for (size_t k = 0; k < regions.size(); k++) {
-            const auto &r = regions[k];
-            bool newLoop = true;
-            int s, n;
-            for (size_t j = 0; j < r.size(); j++) {
-                if (newLoop) {
-                    s = r[j].vBeg(segments);
-                    n = r[j].vEnd(segments);
-                    newLoop = false;
-                } else {
-                    if (r[j].vBeg(segments) != n)
-                        throw std::logic_error("Inspect segments " + std::to_string(j-1) + " and " + std::to_string(j)
-                                + " in region " + std::to_string(k));
-                    n = r[j].vEnd(segments);
-                    if (n == s)
-                        newLoop = true;
-                }
-            }
-            if (n != s)
-                throw std::logic_error("Region " + std::to_string(k) + " is not closed");
-        }
-    }
+private:
+    void computeBoundingBox();
+    bool checkCorner(int c, const coord &p) const;
+    void checkCorners() const;
+    void checkRegions() const;
 };
 
 #endif
