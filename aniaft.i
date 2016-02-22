@@ -21,15 +21,13 @@
 
 %template(Coords) std::vector<coord>;
 %template(Segments) std::vector<Segment *>;
-%template(Chain) std::vector<Link>;
-%template(Regions) std::vector<std::vector<Link> >;
+%template(Chain) std::vector<DirectedSeg>;
+%template(Regions) std::vector<std::vector<DirectedSeg> >;
 %template(Triangles) std::vector<Triangle>;
 %template(Edges) std::vector<Edge>;
 
 %feature("director") Segment;
 
 %include "boundary.h"
-
-%ignore edge::operator[];
 
 %include "tria.h"

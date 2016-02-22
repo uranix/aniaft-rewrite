@@ -1,4 +1,4 @@
-from aniaft import coord, Line, Bezier, Link, Boundary, Triangulation
+from aniaft import coord, Line, Bezier, DirectedSeg, Boundary, Triangulation
 
 p = []
 p.append(coord(0, 0))
@@ -17,8 +17,8 @@ s.append(Line(1, 5, p))
 s.append(Line(3, 5, p))
 
 reg0 = []
-reg0.append(Link(2, False))
-reg0.append(Link(1, False))
+reg0.append(DirectedSeg(2, False))
+reg0.append(DirectedSeg(1, False))
 regs = [reg0]
 
 bnd = Boundary(p, s, regs)

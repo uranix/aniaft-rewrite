@@ -4,6 +4,8 @@
 #include <vector>
 #include <string>
 
+#ifndef SWIG
+
 struct Vertex {
     double x, y;
     bool remove;
@@ -24,6 +26,8 @@ struct Triangle {
     Triangle() : remove(false) { }
 };
 
+#endif
+
 struct Edge {
     int v1, v2;
     int label;
@@ -32,6 +36,8 @@ struct Edge {
     { }
     Edge() { }
 };
+
+#ifndef SWIG
 
 class Triangulation;
 
@@ -72,4 +78,7 @@ public:
 
     friend class Triangulation;
 };
+
+#endif
+
 #endif

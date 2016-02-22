@@ -8,6 +8,8 @@
 #include <set>
 #include <vector>
 
+#ifndef SWIG
+
 struct edge {
     int v1, v2;
     int &operator[](const int i) {
@@ -32,6 +34,8 @@ struct edge {
         return v2 < o.v2;
     }
 };
+
+#endif
 
 class Triangulation {
     Mesh mesh;

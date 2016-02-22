@@ -9,6 +9,8 @@
 #include <string>
 #include <stdexcept>
 
+#ifndef SWIG
+
 struct Transformation {
     const double m, sx, sy;
     Transformation(double m, double sx, double sy)
@@ -18,6 +20,17 @@ struct Transformation {
         return coord(m * p.x + sx, m * p.y + sy);
     }
 };
+
+struct BoundingBox {
+    bool initialized;
+    double xmin, xmax, ymin, ymax;
+    BoundingBox() : initialized(false) { }
+    void add(const coord &o);
+    Transformation toUnit() const;
+    Transformation fromUnit() const;
+};
+
+#endif
 
 struct Segment {
     int begCorner, endCorner;
@@ -94,22 +107,13 @@ struct Bezier : public Segment {
     }
 };
 
-struct BoundingBox {
-    bool initialized;
-    double xmin, xmax, ymin, ymax;
-    BoundingBox() : initialized(false) { }
-    void add(const coord &o);
-    Transformation toUnit() const;
-    Transformation fromUnit() const;
-};
-
-struct Link {
+struct DirectedSeg {
     int segment;
     bool reversed;
 
-    Link() { }
+    DirectedSeg() { }
 
-    Link(int segment, bool reversed)
+    DirectedSeg(int segment, bool reversed)
         : segment(segment), reversed(reversed)
     { }
 
@@ -128,16 +132,18 @@ struct Link {
     }
 };
 
-struct Boundary {
+class Triangulation;
+
+class Boundary {
     std::vector<coord> corners;
     std::vector<Segment *> segments;
-    std::vector<std::vector<Link> > regions;
-
+    std::vector<std::vector<DirectedSeg> > regions;
     BoundingBox bb;
+public:
     Boundary(
             const std::vector<coord> corners,
             const std::vector<Segment *> segments,
-            const std::vector<std::vector<Link> > regions
+            const std::vector<std::vector<DirectedSeg> > regions
         )
         : corners(corners), segments(segments), regions(regions)
     {
@@ -150,6 +156,8 @@ private:
     bool checkCorner(int c, const coord &p) const;
     void checkCorners() const;
     void checkRegions() const;
+
+    friend class Triangulation;
 };
 
 #endif

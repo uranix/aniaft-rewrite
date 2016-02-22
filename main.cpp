@@ -41,7 +41,7 @@ int main() {
                 coord(0, -.667), coord(1, -.667)
             ));
 
-    std::vector<std::vector<Link> > regs(3);
+    std::vector<std::vector<DirectedSeg> > regs(3);
 
     regs[0].emplace_back(2, false);
     regs[0].emplace_back(1, false);
