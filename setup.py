@@ -9,5 +9,6 @@ setup(
             extra_compile_args=['-std=c++11', '-Wall', '-Werror'],
             swig_opts=['-modern', '-c++', '-Wall']
         )
-    ]
+    ],
+    py_modules = ['aniaft']
 )
