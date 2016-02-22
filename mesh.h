@@ -18,6 +18,8 @@ struct Vertex {
     void move(double xx, double yy) { x = xx; y = yy; }
 };
 
+#endif
+
 struct Triangle {
     int v1, v2, v3;
     int label;
@@ -25,8 +27,6 @@ struct Triangle {
     Triangle(int v1, int v2, int v3, int lab) : v1(v1), v2(v2), v3(v3), label(lab), remove(false) { }
     Triangle() : remove(false) { }
 };
-
-#endif
 
 struct Edge {
     int v1, v2;

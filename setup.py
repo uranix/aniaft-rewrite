@@ -6,8 +6,8 @@ setup(
     ext_modules = [
         Extension("_aniaft",
             sources=["boundary.cpp", "tree.cpp", "tria.cpp", "mesh.cpp", "aniaft.i"],
-            extra_compile_args=['-std=c++11'],
-            swig_opts=['-modern', '-c++']
+            extra_compile_args=['-std=c++11', '-Wall', '-Werror'],
+            swig_opts=['-modern', '-c++', '-Wall']
         )
     ]
 )

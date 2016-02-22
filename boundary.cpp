@@ -85,3 +85,15 @@ void Boundary::checkRegions() const {
             throw std::logic_error("Region " + std::to_string(k) + " is not closed");
     }
 }
+
+Boundary::Boundary(
+        const std::vector<coord> corners,
+        const std::vector<Segment *> segments,
+        const std::vector<std::vector<DirectedSeg> > regions
+    )
+    : corners(corners), segments(segments), regions(regions)
+{
+    computeBoundingBox();
+    checkRegions();
+    checkCorners();
+}

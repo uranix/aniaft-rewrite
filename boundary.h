@@ -144,13 +144,7 @@ public:
             const std::vector<coord> corners,
             const std::vector<Segment *> segments,
             const std::vector<std::vector<DirectedSeg> > regions
-        )
-        : corners(corners), segments(segments), regions(regions)
-    {
-        computeBoundingBox();
-        checkRegions();
-        checkCorners();
-    }
+        );
 private:
     void computeBoundingBox();
     bool checkCorner(int c, const coord &p) const;
