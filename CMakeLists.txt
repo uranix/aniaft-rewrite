@@ -22,7 +22,7 @@ endif()
 find_package(SWIG 3.0 REQUIRED)
 include(${SWIG_USE_FILE})
 
-find_package(PythonLibs)
+find_package(PythonLibs 2.7 REQUIRED)
 include_directories(${PYTHON_INCLUDE_PATH})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
