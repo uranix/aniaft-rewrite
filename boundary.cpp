@@ -66,7 +66,7 @@ void Boundary::checkRegions() const {
     for (size_t k = 0; k < regions.size(); k++) {
         const auto &r = regions[k];
         bool newLoop = true;
-        int s, n;
+        int s = 0, n = 0;
         for (size_t j = 0; j < r.size(); j++) {
             if (newLoop) {
                 s = r[j].vBeg(segments);
