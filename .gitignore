@@ -3,3 +3,4 @@ main
 *.ps
 *.vtk
 build/
+.ipynb_checkpoints

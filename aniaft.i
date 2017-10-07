@@ -13,6 +13,8 @@
 
 %feature("director") Metric;
 
+%feature("kwargs") Segment;
+
 %include "metric.h"
 
 %include "mesh.h"

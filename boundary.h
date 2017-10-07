@@ -113,7 +113,7 @@ struct DirectedSeg {
 
     DirectedSeg() { }
 
-    DirectedSeg(int segment, bool reversed)
+    DirectedSeg(int segment, bool reversed=false)
         : segment(segment), reversed(reversed)
     { }
 
