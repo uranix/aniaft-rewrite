@@ -113,6 +113,9 @@ public:
         }
         return ret;
     }
+    void saveToVtk(const std::string &fn) {
+        mesh.saveVtk(fn);
+    }
 };
 
 #endif

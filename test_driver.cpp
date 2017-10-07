@@ -26,17 +26,17 @@ int main() {
     s.push_back(new Line(2, 3, p)); // 2
     s.push_back(new Line(5, 6, p)); // 3
     s.push_back(new Line(3, 4, p)); // 4
-    s.push_back(new Bezier(              // 5
+    s.push_back(new Bezier(         // 5
                 2, 6, p,
                 coord(-2, 1), coord(-2, -1)
             ));
     s.push_back(new Line(6, 4, p)); // 6
     s.push_back(new Line(4, 2, p)); // 7
-    s.push_back(new Bezier(              // 8
+    s.push_back(new Bezier(         // 8
                 1, 0, p,
                 coord(1, .667), coord(0, .667)
             ));
-    s.push_back(new Bezier(              // 9
+    s.push_back(new Bezier(         // 9
                 0, 1, p,
                 coord(0, -.667), coord(1, -.667)
             ));
@@ -60,10 +60,11 @@ int main() {
     regs[2].emplace_back(1, true);
 
     Boundary bnd(p, s, regs);
-    Triangulation tr(bnd, MyMetric());
+    MyMetric metric;
+    Triangulation tr(bnd, metric);
 
     tr.generate();
-//    tr.mesh.saveVtk("out.vtk");
+    tr.saveToVtk("out.vtk");
 
     return 0;
 }
