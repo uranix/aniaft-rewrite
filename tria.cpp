@@ -439,7 +439,7 @@ void Triangulation::fill_eadj() {
     eadj.clear();
     eadj.resize(mesh.pts.size());
 
-    for (const auto t : mesh.tri) {
+    for (const auto &t : mesh.tri) {
         int a = t.v1;
         int b = t.v2;
         int c = t.v3;
@@ -457,7 +457,7 @@ void Triangulation::fill_tadj() {
     tadj.clear();
     tadj.resize(mesh.pts.size());
 
-    for (const auto t : mesh.tri) {
+    for (const auto &t : mesh.tri) {
         int a;
         edge b;
 
