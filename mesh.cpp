@@ -96,7 +96,7 @@ void Mesh::calcNeigTria() {
         p.alreadySwapped = false;
     }
     int i = 0;
-    for (const auto tr : tri) {
+    for (const auto &tr : tri) {
         pts[tr.v1].neibTria.push_back(i);
         pts[tr.v2].neibTria.push_back(i);
         pts[tr.v3].neibTria.push_back(i);
