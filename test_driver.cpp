@@ -6,6 +6,9 @@ struct MyMetric : public Metric {
     double size(const coord &c) const override {
         return 0.03 * (3 + sin(4 * c.x) + sin(5 * c.y) );
     }
+    double bndsize(const coord &c) const override {
+        return 0.2;
+    }
 };
 
 int main() {

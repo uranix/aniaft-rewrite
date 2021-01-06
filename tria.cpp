@@ -357,7 +357,7 @@ void Triangulation::meshBoundary() {
             double nprev = nsteps.back();
             double ti = s.tmin + i * dt;
             double tn = ti + dt;
-            double dn = Metric::distance(s(tn), s(ti)) / metric.size(s(0.5 * (ti + tn)));
+            double dn = Metric::distance(s(tn), s(ti)) / metric.bndsize(s(0.5 * (ti + tn)));
             nsteps.push_back(nprev + dn);
         }
         double adjust = std::ceil(nsteps.back()) / nsteps.back();

@@ -21,6 +21,7 @@ struct Metric {
         return std::sqrt((x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2));
     }
     virtual double size(const coord &p) const = 0;
+    virtual double bndsize(const coord &p) const { return size(p); }
     virtual ~Metric() { }
 };
 
