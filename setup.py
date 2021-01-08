@@ -15,7 +15,7 @@ class CustomBuild(build):
 
 setup(
     name = 'aniaft',
-    version = '0.1',
+    version = '0.2',
     cmdclass = { 'build' : CustomBuild },
     ext_modules = [
         Extension("_aniaft",
